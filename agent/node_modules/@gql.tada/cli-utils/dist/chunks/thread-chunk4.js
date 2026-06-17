@@ -1,0 +1,112 @@
+var e = require("typescript");
+
+var r = require("node:path");
+
+var a = require("@gql.tada/internal");
+
+var i = require("@0no-co/graphqlsp/api");
+
+var t = require("./index-chunk2.js");
+
+var n = require("./index-chunk.js");
+
+function _interopNamespaceDefault(e) {
+  var r = Object.create(null);
+  if (e) {
+    Object.keys(e).forEach((function(a) {
+      if ("default" !== a) {
+        var i = Object.getOwnPropertyDescriptor(e, a);
+        Object.defineProperty(r, a, i.get ? i : {
+          enumerable: !0,
+          get: function() {
+            return e[a];
+          }
+        });
+      }
+    }));
+  }
+  r.default = e;
+  return r;
+}
+
+var o = _interopNamespaceDefault(r);
+
+var l = t.expose((async function* _runDiagnostics(r) {
+  var t = o.dirname(r.configPath);
+  var l = n.programFactory(r);
+  var s = l.createExternalFiles();
+  if (s.length) {
+    yield {
+      kind: "EXTERNAL_WARNING"
+    };
+    await l.addVirtualFiles(s);
+  }
+  var c = await a.loadRef(r.pluginConfig).load({
+    rootPath: t
+  });
+  var g = {
+    current: c.current,
+    multi: c.multi,
+    version: c.version,
+    errors: {
+      config: null,
+      load: new Map,
+      write: new Map
+    },
+    outputLocations: new Map,
+    checkStale() {}
+  };
+  var u = l.build();
+  var f = u.buildPluginInfo(r.pluginConfig);
+  var d = u.getSourceFiles();
+  yield {
+    kind: "FILE_COUNT",
+    fileCount: d.length
+  };
+  for (var v of d) {
+    var p = v.fileName.endsWith(".vue.ts") || v.fileName.endsWith(".svelte.ts");
+    var h = v.fileName;
+    f.config = {
+      ...f.config,
+      shouldCheckForColocatedFragments: p ? !1 : f.config.shouldCheckForColocatedFragments ?? !1,
+      trackFieldUsage: p ? !1 : f.config.trackFieldUsage ?? !1
+    };
+    var m = i.getGraphQLDiagnostics(h, g, f);
+    var y = [];
+    if (m && m.length) {
+      for (var C of m) {
+        if (!("messageText" in C) || "string" != typeof C.messageText || !C.file) {
+          continue;
+        }
+        var F = "info";
+        if (C.category === e.DiagnosticCategory.Error) {
+          F = "error";
+        } else if (C.category === e.DiagnosticCategory.Warning) {
+          F = "warn";
+        }
+        var N = u.getSourcePosition(v, {
+          start: C.start || 1,
+          length: C.length || 1
+        });
+        h = N.fileName;
+        y.push({
+          severity: F,
+          message: C.messageText,
+          file: N.fileName,
+          line: N.line,
+          col: N.col,
+          endLine: N.endLine,
+          endColumn: N.endColumn
+        });
+      }
+    }
+    yield {
+      kind: "FILE_DIAGNOSTICS",
+      filePath: h,
+      messages: y
+    };
+  }
+}));
+
+exports.runDiagnostics = l;
+//# sourceMappingURL=thread-chunk4.js.map
