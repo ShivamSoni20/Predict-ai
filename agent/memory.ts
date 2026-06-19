@@ -1,11 +1,19 @@
-import { createMemWalClient } from '@mysten-incubation/memwal';
+import { MemWal } from '@mysten-incubation/memwal';
 
 // ── MemWal Client Setup ──
-const memwal = createMemWalClient({
-  agentAddress: process.env.MEMWAL_AGENT_ADDRESS!,
-  delegateKey: process.env.MEMWAL_DELEGATE_KEY!,
-  network: 'testnet',
+const memwal = MemWal.create({
+  key: process.env.MEMWAL_DELEGATE_KEY!,
+  accountId: process.env.MEMWAL_AGENT_ADDRESS!,
 });
+
+export async function verifyMemWalSetup(): Promise<boolean> {
+  try {
+    // Just a ping or checking if addresses are set
+    return !!process.env.MEMWAL_AGENT_ADDRESS && !!process.env.MEMWAL_DELEGATE_KEY;
+  } catch {
+    return false;
+  }
+}
 
 // ── Memory Types ──
 export interface AgentMemory {
@@ -45,12 +53,8 @@ export async function storeReasoning(reasoning: {
     agent_version: '1.0.0',
   });
 
-  const result = await memwal.storeMemory({
-    content: blob,
-    tags: ['reasoning', 'predictai', reasoning.decision],
-  });
-
-  return result.blobId;
+  const result = await memwal.rememberAndWait(blob, 'predictai');
+  return result.blob_id;
 }
 
 /**
@@ -61,17 +65,17 @@ export async function loadAgentMemory(
   context: string
 ): Promise<AgentMemory | null> {
   try {
-    const memories = await memwal.retrieveMemories({
+    const memories = await memwal.recall({
       query: context,
       limit: 10,
-      tags: ['predictai'],
+      namespace: 'predictai',
     });
 
-    if (!memories || memories.length === 0) return null;
+    if (!memories.results || memories.results.length === 0) return null;
 
     // Parse the most relevant memory
-    const latest = memories[0];
-    return JSON.parse(latest.content) as AgentMemory;
+    const latest = memories.results[0];
+    return JSON.parse(latest.text) as AgentMemory;
   } catch {
     return null;
   }
@@ -100,10 +104,7 @@ export async function recordOutcome(params: {
     last_decision: `${params.direction} @ ${params.strike}`,
   };
 
-  await memwal.storeMemory({
-    content: JSON.stringify(updated),
-    tags: ['predictai', 'outcome', params.outcome.toLowerCase()],
-  });
+  await memwal.rememberAndWait(JSON.stringify(updated), 'outcome');
 }
 
 function calculateWinRate(

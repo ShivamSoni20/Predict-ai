@@ -1,0 +1,16 @@
+# Sui binaries
+*.exe
+*.tgz
+*.stackdump
+
+# Build artifacts
+contracts/build/
+
+# Transaction JSON artifacts
+contracts/*.json
+!contracts/Move.toml
+!contracts/Move.lock
+!contracts/Published.toml
+
+# OS
+.DS_Store

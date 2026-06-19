@@ -5,6 +5,7 @@ module predictai::agent_mandate {
     use sui::coin::{Self, Coin};
     use sui::clock::{Self, Clock};
 
+
     // ── Errors ──
     const E_BUDGET_EXCEEDED: u64 = 1;
     const E_MANDATE_EXPIRED: u64 = 2;
@@ -97,7 +98,7 @@ module predictai::agent_mandate {
         amount: u64,
         clock: &Clock,
         ctx: &TxContext,
-    ): bool {
+    ) {
         // Must be active
         assert!(mandate.is_active, E_MANDATE_KILLED);
         // Must not be expired
@@ -111,8 +112,8 @@ module predictai::agent_mandate {
             E_NOT_OWNER
         );
         // Must be within budget
+        assert!(mandate.budget_cap - mandate.spent >= amount, E_BUDGET_EXCEEDED);
         let new_spent = mandate.spent + amount;
-        assert!(new_spent <= mandate.budget_cap, E_BUDGET_EXCEEDED);
 
         mandate.spent = new_spent;
 
@@ -121,8 +122,6 @@ module predictai::agent_mandate {
             amount,
             new_total: new_spent,
         });
-
-        true
     }
 
     /// Owner kills the agent immediately

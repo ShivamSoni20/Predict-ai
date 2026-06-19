@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.0",
-    "@mysten/dapp-kit": "^0.14.0",
+    "@mysten/dapp-kit-core": "latest",
+    "@mysten/dapp-kit-react": "latest",
     "@mysten/sui": "latest",
     "@mysten-incubation/memwal": "latest",
     "@tanstack/react-query": "^5.0.0",

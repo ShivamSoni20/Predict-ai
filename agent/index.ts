@@ -1,8 +1,8 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { fetchOracleSVI, fetchStrikeList, fetchOpenPositions, buildMintTransaction, buildRedeemTransaction } from './executor';
+import { fetchOracleSVI, fetchStrikeList, fetchOpenPositions, buildMintTransaction, buildRedeemTransaction, checkPredictServerHealth } from './executor';
 import { makeDecision } from './decision';
-import { storeReasoning, recordOutcome } from './memory';
-import { uploadAuditLog } from './logger';
+import { storeReasoning, recordOutcome, verifyMemWalSetup } from './memory';
+import { uploadAuditLog, checkWalrusHealth } from './logger';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -128,8 +128,8 @@ async function runAgentCycle(): Promise<void> {
 
 // ── Helper: find dUSDC coin object ──
 async function findDUsdcCoin(keypair: Ed25519Keypair): Promise<string> {
-  const { SuiClient, getFullnodeUrl } = await import('@mysten/sui/client');
-  const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+  const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import('@mysten/sui/jsonRpc');
+  const client = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl('testnet'), network: 'testnet' });
 
   const coins = await client.getCoins({
     owner: keypair.getPublicKey().toSuiAddress(),
@@ -149,6 +149,15 @@ async function main(): Promise<void> {
   console.log(`Agent address: ${AGENT_ADDRESS}`);
   console.log(`Budget cap: ${process.env.AGENT_BUDGET_CAP} dUSDC`);
   console.log(`Poll interval: ${Number(process.env.POLL_INTERVAL_MS) / 1000}s`);
+
+  // Health checks
+  const isPredictUp = await checkPredictServerHealth();
+  const isMemWalOk = await verifyMemWalSetup();
+  const isWalrusUp = await checkWalrusHealth();
+  
+  if (!isPredictUp) console.warn('Warning: Predict server might be unreachable.');
+  if (!isMemWalOk) console.warn('Warning: MemWal credentials not fully set.');
+  if (!isWalrusUp) console.warn('Warning: Walrus publisher might be down.');
 
   // Run immediately, then on interval
   await runAgentCycle();
