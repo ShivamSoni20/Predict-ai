@@ -282,6 +282,9 @@ footer{border-top:1px solid var(--border);padding:32px 40px;display:flex;align-i
 .sb-link{display:flex;align-items:center;gap:8px;padding:7px 16px;color:var(--text2);text-decoration:none;font-size:11px;font-family:var(--mono);transition:all .15s;cursor:pointer;letter-spacing:.03em}
 .sb-link:hover,.sb-link.on{background:rgba(201,168,76,0.06);color:var(--text)}
 .sb-link.on{border-right:2px solid var(--gold);color:var(--gold)}
+.sb-link:focus-visible,.dbtn:focus-visible,.audit-button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.sb-button-danger{width:100%;border:0;background:transparent;color:var(--red);text-align:left}
+.sb-button-danger:disabled{opacity:.65;cursor:not-allowed}
 .sb-dot{width:4px;height:4px;border-radius:50%;background:var(--green);flex-shrink:0;animation:blink 2s infinite}
 .sb-badge{margin-left:auto;font-size:9px;font-family:var(--mono);padding:1px 5px;background:rgba(201,168,76,.12);color:var(--gold);border-radius:2px}
 .sb-foot{padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
@@ -366,6 +369,9 @@ footer{border-top:1px solid var(--border);padding:32px 40px;display:flex;align-i
 .audit-list{display:flex;flex-direction:column;gap:0}
 .al-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border)}
 .al-row:last-child{border-bottom:none}
+.audit-button{width:100%;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.audit-button:hover{background:rgba(255,255,255,.03)}
+.audit-preview{margin-top:12px;max-height:260px;overflow:auto;background:var(--bg);border:1px solid var(--border);padding:12px;color:var(--text2);font-size:11px;font-family:var(--mono);white-space:pre-wrap}
 .al-icon{width:26px;height:26px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;font-family:var(--mono)}
 .ai-open{background:rgba(45,189,135,.08);border:1px solid rgba(45,189,135,.15);color:var(--green)}
 .ai-hedge{background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.15);color:var(--gold)}

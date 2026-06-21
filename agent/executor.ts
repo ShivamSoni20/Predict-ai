@@ -32,6 +32,18 @@ export interface PredictPosition {
   quantity?: number;
 }
 
+export interface MandateState {
+  id: string;
+  owner: string;
+  agent: string;
+  budget_cap: number;
+  spent: number;
+  budget_remaining: number;
+  expiry_ms: number;
+  is_active: boolean;
+  created_at: number;
+}
+
 // ── Oracle Functions ──
 
 export async function checkPredictServerHealth(): Promise<boolean> {
@@ -184,6 +196,36 @@ export async function fetchOpenPositions(
   } catch {
     return [];
   }
+}
+
+export async function fetchMandateState(mandateObjectId: string): Promise<MandateState> {
+  const object = await client.getObject({
+    id: mandateObjectId,
+    options: { showContent: true },
+  });
+
+  const content = object.data?.content;
+  if (!content || content.dataType !== 'moveObject') {
+    throw new Error(`Mandate object not found or has no Move content: ${mandateObjectId}`);
+  }
+
+  const fields = (content as any).fields ?? {};
+  const budgetCapMist = Number(fields.budget_cap ?? 0);
+  const spentMist = Number(fields.spent ?? 0);
+  const budgetCap = budgetCapMist / 1_000_000;
+  const spent = spentMist / 1_000_000;
+
+  return {
+    id: mandateObjectId,
+    owner: String(fields.owner ?? ''),
+    agent: String(fields.agent ?? ''),
+    budget_cap: budgetCap,
+    spent,
+    budget_remaining: Math.max(0, budgetCap - spent),
+    expiry_ms: Number(fields.expiry_ms ?? 0),
+    is_active: Boolean(fields.is_active),
+    created_at: Number(fields.created_at ?? 0),
+  };
 }
 
 // ── Transaction Functions ──

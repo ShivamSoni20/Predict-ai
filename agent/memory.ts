@@ -40,6 +40,16 @@ export interface AgentMemory {
   last_decision: string;
 }
 
+export interface MemorySignal {
+  summary: string;
+  comparable_outcomes: number;
+  comparable_wins: number;
+  win_rate: number | null;
+  confidence_adjustment: number;
+  last_decision: string | null;
+  iv_history: Array<{ iv: number; timestamp: number }>;
+}
+
 /**
  * Store agent reasoning as a Walrus blob via MemWal
  * Returns the blob CID for on-chain reference
@@ -55,6 +65,7 @@ export async function storeReasoning(reasoning: {
   strike?: number;
   confidence: number;
   explanation: string;
+  memory_signal?: MemorySignal;
 }): Promise<string> {
   const blob = JSON.stringify({
     ...reasoning,
@@ -90,6 +101,40 @@ export async function loadAgentMemory(
   }
 }
 
+export async function buildMemorySignal(params: {
+  atm_iv: number;
+  skew: number;
+}): Promise<MemorySignal> {
+  const memory = await loadAgentMemory(
+    `BTC volatility outcome near IV ${params.atm_iv} skew ${params.skew}`
+  );
+
+  const positions = memory?.past_positions ?? [];
+  const comparable = positions.filter((position) =>
+    Math.abs(position.iv_at_entry - params.atm_iv) <= 0.08
+  );
+  const comparableWins = comparable.filter((position) => position.outcome === 'WIN').length;
+  const winRate = comparable.length ? comparableWins / comparable.length : null;
+  const confidenceAdjustment = winRate === null
+    ? 0
+    : Math.max(-0.1, Math.min(0.1, (winRate - 0.5) * 0.2));
+
+  const pct = (value: number) => `${(value * 100).toFixed(0)}%`;
+  const summary = comparable.length
+    ? `Similar past setup: ${comparableWins}/${comparable.length} wins, confidence ${confidenceAdjustment >= 0 ? '+' : ''}${pct(confidenceAdjustment)}.`
+    : 'No comparable past outcomes yet, confidence adjustment +0%.';
+
+  return {
+    summary,
+    comparable_outcomes: comparable.length,
+    comparable_wins: comparableWins,
+    win_rate: winRate,
+    confidence_adjustment: confidenceAdjustment,
+    last_decision: memory?.last_decision ?? null,
+    iv_history: memory?.iv_history?.slice(-10) ?? [],
+  };
+}
+
 /**
  * Update win/loss record after position settles
  */
@@ -113,7 +158,7 @@ export async function recordOutcome(params: {
     last_decision: `${params.direction} @ ${params.strike}`,
   };
 
-  await getMemWal().rememberAndWait(JSON.stringify(updated), 'outcome');
+  await getMemWal().rememberAndWait(JSON.stringify(updated), 'predictai');
 }
 
 function calculateWinRate(

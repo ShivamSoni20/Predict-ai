@@ -1,5 +1,9 @@
+import { mkdir, readFile, writeFile } from 'fs/promises';
+import path from 'path';
+
 const PUBLISHER = process.env.WALRUS_PUBLISHER_URL!;
 const AGGREGATOR = process.env.WALRUS_AGGREGATOR_URL!;
+const AUDIT_INDEX_PATH = process.env.AUDIT_INDEX_PATH ?? '../frontend/data/audit-index.json';
 
 export interface AuditEntry {
   action: 'MINT' | 'REDEEM' | 'HOLD' | 'SKIP' | 'ERROR' | 'OPEN_HEDGE';
@@ -7,9 +11,19 @@ export interface AuditEntry {
   reasoningCid: string | null;
   decision: any;
   oracle: any;
+  mandate?: any;
+  memorySignal?: any;
   error?: string;
   timestamp: number;
   agent_version: string;
+}
+
+export interface AuditIndexEntry {
+  blobId: string;
+  action: AuditEntry['action'];
+  txDigest: string | null;
+  timestamp: number;
+  summary: string;
 }
 
 /**
@@ -47,6 +61,13 @@ export async function uploadAuditLog(params: Omit<AuditEntry, 'timestamp' | 'age
         const data: any = await response.json();
         const blobId = data.newlyCreated?.blobObject?.blobId ?? data.alreadyCertified?.blobId ?? 'unknown';
         console.log(`Audit log stored on Walrus: ${blobId}`);
+        await appendAuditIndex({
+          blobId,
+          action: entry.action,
+          txDigest: entry.txDigest,
+          timestamp: entry.timestamp,
+          summary: buildAuditSummary(entry),
+        });
         return blobId;
       }
     } catch (err) {
@@ -80,4 +101,29 @@ export function cacheAuditBlobId(id: string): void {
 }
 export function getRecentBlobIds(): string[] {
   return blobIdCache.slice(0, 20);
+}
+
+async function appendAuditIndex(entry: AuditIndexEntry): Promise<void> {
+  cacheAuditBlobId(entry.blobId);
+
+  const fullPath = path.resolve(AUDIT_INDEX_PATH);
+  await mkdir(path.dirname(fullPath), { recursive: true });
+
+  let existing: AuditIndexEntry[] = [];
+  try {
+    existing = JSON.parse(await readFile(fullPath, 'utf8')) as AuditIndexEntry[];
+  } catch {
+    existing = [];
+  }
+
+  const next = [entry, ...existing.filter((item) => item.blobId !== entry.blobId)].slice(0, 50);
+  await writeFile(fullPath, JSON.stringify(next, null, 2));
+}
+
+function buildAuditSummary(entry: AuditEntry): string {
+  if (entry.error) return `Error: ${entry.error}`;
+  if (entry.memorySignal?.summary) return String(entry.memorySignal.summary);
+  if (entry.decision?.explanation) return String(entry.decision.explanation);
+  if (entry.txDigest) return `${entry.action} transaction ${entry.txDigest.slice(0, 10)}...`;
+  return `${entry.action} recorded`;
 }

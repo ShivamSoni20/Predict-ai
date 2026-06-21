@@ -11,6 +11,7 @@ module predictai::agent_mandate {
     const E_MANDATE_EXPIRED: u64 = 2;
     const E_MANDATE_KILLED: u64 = 3;
     const E_NOT_OWNER: u64 = 4;
+    const E_WRONG_CAP: u64 = 5;
 
     // ── Structs ──
     public struct AgentMandate has key, store {
@@ -127,10 +128,11 @@ module predictai::agent_mandate {
     /// Owner kills the agent immediately
     public entry fun kill_mandate(
         mandate: &mut AgentMandate,
-        _kill_cap: &KillCap,
+        kill_cap: &KillCap,
         ctx: &TxContext,
     ) {
         assert!(tx_context::sender(ctx) == mandate.owner, E_NOT_OWNER);
+        assert!(kill_cap.mandate_id == object::id_address(mandate), E_WRONG_CAP);
         mandate.is_active = false;
 
         sui::event::emit(MandateKilled {
@@ -145,4 +147,5 @@ module predictai::agent_mandate {
     public fun budget_remaining(mandate: &AgentMandate): u64 { mandate.budget_cap - mandate.spent }
     public fun spent(mandate: &AgentMandate): u64 { mandate.spent }
     public fun owner(mandate: &AgentMandate): address { mandate.owner }
+    public fun kill_cap_mandate_id(kill_cap: &KillCap): address { kill_cap.mandate_id }
 }

@@ -1,5 +1,6 @@
 import { createDAppKit } from '@mysten/dapp-kit-core';
 import { SuiGrpcClient } from '@mysten/sui/grpc';
+import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from '@mysten/sui/jsonRpc';
 
 const GRPC_URL = 'https://fullnode.testnet.sui.io:443';
 
@@ -13,9 +14,8 @@ export const dAppKit = createDAppKit({
     }),
 });
 
-// For direct client usage in server-side code (API routes)
-export { SuiGrpcClient };
-export const suiClient = new SuiGrpcClient({
+// JSON-RPC exposes the owned-object APIs used by the server-side fallback.
+export const suiClient = new SuiJsonRpcClient({
   network: 'testnet',
-  baseUrl: GRPC_URL,
+  url: getJsonRpcFullnodeUrl('testnet'),
 });

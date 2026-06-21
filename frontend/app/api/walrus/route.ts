@@ -9,6 +9,12 @@ export async function GET(req: NextRequest) {
   try {
     const response = await fetch(`${AGGREGATOR}/v1/blobs/${blobId}`);
     const text = await response.text();
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: `Walrus blob fetch failed with status ${response.status}` },
+        { status: response.status }
+      );
+    }
     return NextResponse.json(JSON.parse(text));
   } catch (err: any) {
     return NextResponse.json({ error: String(err) }, { status: 500 });

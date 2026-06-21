@@ -27,6 +27,18 @@ export interface PredictPosition {
   quantity?: number;
 }
 
+export interface MandateState {
+  id: string;
+  owner: string;
+  agent: string;
+  budget_cap: number;
+  spent: number;
+  budget_remaining: number;
+  expiry_ms: number;
+  is_active: boolean;
+  created_at: number;
+}
+
 export async function checkPredictServerHealth(): Promise<boolean> {
   try {
     const res = await fetch(`${PREDICT_SERVER}/status`);
@@ -171,5 +183,37 @@ export async function fetchOpenPositions(managerAddress: string): Promise<Predic
     });
   } catch {
     return [];
+  }
+}
+
+export async function fetchMandateState(mandateObjectId: string): Promise<MandateState | null> {
+  try {
+    const object = await suiClient.getObject({
+      id: mandateObjectId,
+      options: { showContent: true },
+    });
+
+    const content = object.data?.content;
+    if (!content || content.dataType !== 'moveObject') return null;
+
+    const fields = (content as any).fields ?? {};
+    const budgetCapMist = Number(fields.budget_cap ?? 0);
+    const spentMist = Number(fields.spent ?? 0);
+    const budgetCap = budgetCapMist / 1_000_000;
+    const spent = spentMist / 1_000_000;
+
+    return {
+      id: mandateObjectId,
+      owner: String(fields.owner ?? ''),
+      agent: String(fields.agent ?? ''),
+      budget_cap: budgetCap,
+      spent,
+      budget_remaining: Math.max(0, budgetCap - spent),
+      expiry_ms: Number(fields.expiry_ms ?? 0),
+      is_active: Boolean(fields.is_active),
+      created_at: Number(fields.created_at ?? 0),
+    };
+  } catch {
+    return null;
   }
 }

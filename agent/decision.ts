@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { OracleSVI } from './executor.js';
-import { loadAgentMemory } from './memory.js';
+import { MemorySignal } from './memory.js';
 
 const claude = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -16,21 +16,14 @@ export interface AgentDecision {
   reasoning_steps: string[];
 }
 
-/**
- * Core agent brain — Claude decides whether to hedge
- * Uses MemWal memory to improve decisions over time
- */
 export async function makeDecision(params: {
   oracle: OracleSVI;
   strikes: Array<{ strike: number; iv: number; premium_up: number; premium_down: number }>;
   budget_remaining: number;
   open_positions: number;
+  memory_signal: MemorySignal;
 }): Promise<AgentDecision> {
-
-  // Load historical memory from Walrus
-  const memory = await loadAgentMemory(
-    `BTC volatility ${params.oracle.atm_iv} skew ${params.oracle.skew} decision`
-  );
+  const model = process.env.ANTHROPIC_MODEL ?? 'claude-3-5-sonnet-latest';
 
   const systemPrompt = `You are PredictAI, an autonomous hedging agent on the Sui blockchain.
 You analyze DeepBook Predict's volatility surface and decide whether to open binary hedge positions.
@@ -39,9 +32,10 @@ Your goal: protect a portfolio from BTC volatility by opening directional binary
 
 Rules you MUST follow:
 - Only open a position if confidence >= ${process.env.CONFIDENCE_THRESHOLD ?? 0.65}
-- Never exceed budget cap — current remaining: ${params.budget_remaining} dUSDC
-- Max 3 open positions at once — current: ${params.open_positions}
+- Never exceed budget cap. Current remaining: ${params.budget_remaining} dUSDC
+- Max 3 open positions at once. Current: ${params.open_positions}
 - Position size: exactly ${process.env.POSITION_SIZE ?? 50} dUSDC per trade
+- Apply the memory signal conservatively. It may adjust confidence, but it must not override mandate, budget, or market constraints.
 
 Output ONLY valid JSON matching this exact schema:
 {
@@ -69,13 +63,14 @@ ${params.strikes.map(s =>
   `  $${s.strike.toLocaleString()}: IV=${(s.iv * 100).toFixed(1)}%, UP premium=${s.premium_up.toFixed(3)}, DOWN premium=${s.premium_down.toFixed(3)}`
 ).join('\n')}
 
-HISTORICAL MEMORY (from Walrus):
-${memory ? `
-- Win rate: ${(memory.win_rate * 100).toFixed(1)}%
-- Total positions: ${memory.total_positions}
-- Last decision: ${memory.last_decision}
-- Recent IV history: ${memory.iv_history.slice(-3).map((h: { iv: number; timestamp: number }) => (h.iv * 100).toFixed(1) + '%').join(', ')}
-` : '- No historical memory yet (first session)'}
+MEMORY SIGNAL (from Walrus/MemWal):
+- ${params.memory_signal.summary}
+- Comparable outcomes: ${params.memory_signal.comparable_outcomes}
+- Comparable wins: ${params.memory_signal.comparable_wins}
+- Win rate: ${params.memory_signal.win_rate === null ? 'n/a' : (params.memory_signal.win_rate * 100).toFixed(1) + '%'}
+- Confidence adjustment: ${(params.memory_signal.confidence_adjustment * 100).toFixed(1)}%
+- Last decision: ${params.memory_signal.last_decision ?? 'none'}
+- Recent IV history: ${params.memory_signal.iv_history.length ? params.memory_signal.iv_history.slice(-3).map((h) => (h.iv * 100).toFixed(1) + '%').join(', ') : 'none'}
 
 CONSTRAINTS:
 - Budget remaining: ${params.budget_remaining} dUSDC
@@ -85,17 +80,57 @@ CONSTRAINTS:
 Analyze and decide. Output JSON only.`;
 
   const response = await claude.messages.create({
-    model: 'claude-3-5-sonnet-latest',
+    model,
     max_tokens: 1000,
     messages: [{ role: 'user', content: userMessage }],
     system: systemPrompt,
   });
 
   const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  return parseAgentDecision(text);
+}
 
-  // Parse JSON response
-  const clean = text.replace(/```json|```/g, '').trim();
-  const decision = JSON.parse(clean) as AgentDecision;
+export function parseAgentDecision(text: string): AgentDecision {
+  const fallback: AgentDecision = {
+    action: 'HOLD',
+    confidence: 0,
+    explanation: 'Model response was invalid, so the agent held position for safety.',
+    reasoning_steps: ['Invalid model response', 'Fallback policy selected HOLD', 'No transaction submitted'],
+  };
 
-  return decision;
+  try {
+    const clean = text.replace(/```json|```/g, '').trim();
+    const decision = JSON.parse(clean) as Partial<AgentDecision>;
+    const validAction = decision.action === 'OPEN_HEDGE' || decision.action === 'HOLD' || decision.action === 'SKIP';
+    const validConfidence = typeof decision.confidence === 'number'
+      && decision.confidence >= 0
+      && decision.confidence <= 1;
+    const validReasoning = Array.isArray(decision.reasoning_steps);
+
+    if (!validAction || !validConfidence || typeof decision.explanation !== 'string' || !validReasoning) {
+      return fallback;
+    }
+
+    if (decision.action === 'OPEN_HEDGE') {
+      const validDirection = decision.direction === 'UP' || decision.direction === 'DOWN';
+      if (!validDirection || typeof decision.strike !== 'number' || typeof decision.size_dusdc !== 'number') {
+        return fallback;
+      }
+    }
+
+    const action = decision.action as AgentDecision['action'];
+    const confidence = decision.confidence as number;
+
+    return {
+      action,
+      direction: decision.direction ?? undefined,
+      strike: decision.strike ?? undefined,
+      size_dusdc: decision.size_dusdc ?? undefined,
+      confidence,
+      explanation: decision.explanation,
+      reasoning_steps: decision.reasoning_steps as string[],
+    };
+  } catch {
+    return fallback;
+  }
 }

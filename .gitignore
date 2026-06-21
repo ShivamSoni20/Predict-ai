@@ -23,6 +23,7 @@ agent/.env
 agent/.env.local
 frontend/.env
 frontend/.env.local
+frontend/data/audit-index.json
 
 # OS
 .DS_Store
