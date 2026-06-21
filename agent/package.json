@@ -15,7 +15,8 @@
     "typescript": "^5.0.0"
   },
   "scripts": {
-    "start": "ts-node index.ts",
-    "dev": "ts-node --watch index.ts"
+    "build": "tsc",
+    "start": "npm run build && node dist/index.js",
+    "dev": "node --watch dist/index.js"
   }
 }

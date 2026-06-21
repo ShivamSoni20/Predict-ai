@@ -119,6 +119,24 @@ async function runAgentCycle(): Promise<void> {
     console.log(`Reasoning stored on Walrus: ${reasoningCid}`);
 
     if (decision.action === 'OPEN_HEDGE' && decision.direction && decision.strike) {
+      if ((process.env.EXECUTION_MODE ?? 'live') === 'audit_only') {
+        await uploadAuditLog({
+          action: 'SKIP',
+          txDigest: null,
+          reasoningCid,
+          decision: {
+            ...decision,
+            action: 'SKIP',
+            explanation: `Audit-only mode: ${decision.explanation}`,
+          },
+          oracle,
+          mandate,
+          memorySignal,
+        });
+        console.log('Audit-only mode enabled. Skipping mint transaction.');
+        return;
+      }
+
       const dUsdcObject = await findDUsdcCoin(keypair);
       const selectedStrikeInfo = strikes.find(s => s.strike === decision.strike);
       const premium = decision.direction === 'UP'
@@ -219,6 +237,11 @@ async function main(): Promise<void> {
   if (!isWalrusUp) console.warn('Warning: Walrus publisher might be down.');
 
   await runAgentCycle();
+
+  if (process.env.RUN_ONCE === 'true') {
+    console.log('RUN_ONCE=true, exiting after one cycle.');
+    return;
+  }
 
   setInterval(async () => {
     await runAgentCycle();

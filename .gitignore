@@ -24,6 +24,7 @@ agent/.env.local
 frontend/.env
 frontend/.env.local
 frontend/data/audit-index.json
+frontend/data/memory/
 
 # OS
 .DS_Store

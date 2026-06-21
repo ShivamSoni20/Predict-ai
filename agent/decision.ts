@@ -2,10 +2,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { OracleSVI } from './executor.js';
 import { MemorySignal } from './memory.js';
 
-const claude = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
-
 export interface AgentDecision {
   action: 'OPEN_HEDGE' | 'HOLD' | 'SKIP';
   direction?: 'UP' | 'DOWN';
@@ -23,7 +19,7 @@ export async function makeDecision(params: {
   open_positions: number;
   memory_signal: MemorySignal;
 }): Promise<AgentDecision> {
-  const model = process.env.ANTHROPIC_MODEL ?? 'claude-3-5-sonnet-latest';
+  const model = process.env.ANTHROPIC_MODEL ?? process.env.OPENROUTER_MODEL ?? 'claude-3-5-sonnet-latest';
 
   const systemPrompt = `You are PredictAI, an autonomous hedging agent on the Sui blockchain.
 You analyze DeepBook Predict's volatility surface and decide whether to open binary hedge positions.
@@ -79,15 +75,58 @@ CONSTRAINTS:
 
 Analyze and decide. Output JSON only.`;
 
-  const response = await claude.messages.create({
-    model,
-    max_tokens: 1000,
-    messages: [{ role: 'user', content: userMessage }],
-    system: systemPrompt,
+  const text = await callReasoningModel({ model, systemPrompt, userMessage });
+  return parseAgentDecision(text);
+}
+
+async function callReasoningModel(params: {
+  model: string;
+  systemPrompt: string;
+  userMessage: string;
+}): Promise<string> {
+  if (process.env.OPENROUTER_API_KEY) {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': process.env.OPENROUTER_SITE_URL ?? 'https://github.com/ShivamSoni20/Predict-ai',
+        'X-Title': process.env.OPENROUTER_APP_NAME ?? 'PredictAI Hedger',
+      },
+      body: JSON.stringify({
+        model: process.env.OPENROUTER_MODEL ?? 'anthropic/claude-sonnet-4.6',
+        max_tokens: 1000,
+        temperature: 0.1,
+        messages: [
+          { role: 'system', content: params.systemPrompt },
+          { role: 'user', content: params.userMessage },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`OpenRouter request failed: ${response.status} ${body.slice(0, 300)}`);
+    }
+
+    const data = await response.json() as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    return data.choices?.[0]?.message?.content ?? '';
+  }
+
+  const claude = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY!,
   });
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
-  return parseAgentDecision(text);
+  const response = await claude.messages.create({
+    model: params.model,
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: params.userMessage }],
+    system: params.systemPrompt,
+  });
+
+  return response.content[0].type === 'text' ? response.content[0].text : '';
 }
 
 export function parseAgentDecision(text: string): AgentDecision {

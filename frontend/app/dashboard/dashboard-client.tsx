@@ -121,13 +121,13 @@ export default function DashboardPage() {
               {killing ? 'Stopping...' : 'Emergency Stop'}
             </button>
           </nav>
-          <div className="sb-foot" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '8px', padding: '15px' }}>
+          <div className="sb-foot sb-wallet">
             <ConnectButton />
             {account && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                 <div className="sb-av">{account.address.slice(2, 4).toUpperCase()}</div>
-                <div>
-                  <div style={{fontSize:'11px',fontFamily:'var(--mono)',color:'var(--text)'}}>Active Wallet</div>
+                <div className="sb-wallet-copy">
+                  <div>Active Wallet</div>
                   <div className="sb-addr">{account.address.slice(0, 6)}...{account.address.slice(-4)}</div>
                 </div>
               </div>
@@ -209,28 +209,30 @@ export default function DashboardPage() {
                 <span className="dc-title">Live Vol Surface | OracleSVI</span>
                 <span className="dc-badge">LIVE</span>
               </div>
-              <table className="strike-table">
-                <thead>
-                  <tr>
-                    <th>Strike</th>
-                    <th>Implied Vol</th>
-                    <th>UP Prem</th>
-                    <th>DN Prem</th>
-                    <th>Signal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(data?.strikes ?? []).map((s: any) => (
-                    <tr key={s.strike} className={s.strike === data?.oracle?.strike_atm ? 'atm' : ''}>
-                      <td>${s.strike.toLocaleString()}</td>
-                      <td>{(s.iv * 100).toFixed(1)}%</td>
-                      <td>{s.premium_up.toFixed(3)}</td>
-                      <td>{s.premium_down.toFixed(3)}</td>
-                      <td><span className={`pill-sm ${s.premium_up < 0.5 ? 'pill-up' : 'pill-dn'}`}>{s.premium_up < 0.5 ? 'BUY UP' : 'BUY DN'}</span></td>
+              <div className="table-scroll">
+                <table className="strike-table">
+                  <thead>
+                    <tr>
+                      <th>Strike</th>
+                      <th>Implied Vol</th>
+                      <th>UP Prem</th>
+                      <th>DN Prem</th>
+                      <th>Signal</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {(data?.strikes ?? []).map((s: any) => (
+                      <tr key={s.strike} className={s.strike === data?.oracle?.strike_atm ? 'atm' : ''}>
+                        <td>${s.strike.toLocaleString()}</td>
+                        <td>{(s.iv * 100).toFixed(1)}%</td>
+                        <td>{s.premium_up.toFixed(3)}</td>
+                        <td>{s.premium_down.toFixed(3)}</td>
+                        <td><span className={`pill-sm ${s.premium_up < 0.5 ? 'pill-up' : 'pill-dn'}`}>{s.premium_up < 0.5 ? 'BUY UP' : 'BUY DN'}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
 
             <section>
@@ -300,7 +302,7 @@ function PositionCard({ position }: { position: any }) {
 
 function StatusBanner({ tone, text }: { tone: 'error' | 'info'; text: string }) {
   return (
-    <div className="error-banner" style={{ padding: '12px', background: tone === 'error' ? '#7f1d1d' : '#1f2937', color: 'white', borderRadius: '4px', marginBottom: '16px', fontFamily: 'var(--mono)', fontSize: '12px' }}>
+    <div className={`status-banner ${tone === 'error' ? 'status-error' : 'status-info'}`}>
       {text}
     </div>
   );

@@ -1,4 +1,7 @@
 import { MemWal } from '@mysten-incubation/memwal';
+import { createHash } from 'crypto';
+import { mkdir, writeFile } from 'fs/promises';
+import path from 'path';
 
 // ── MemWal Client Setup ──
 let memwalInstance: any = null;
@@ -73,8 +76,17 @@ export async function storeReasoning(reasoning: {
     agent_version: '1.0.0',
   });
 
-  const result = await getMemWal().rememberAndWait(blob, 'predictai');
-  return result.blob_id;
+  try {
+    const result = await getMemWal().rememberAndWait(blob, 'predictai');
+    return result.blob_id;
+  } catch (error) {
+    const id = `local-${createHash('sha256').update(blob).digest('hex').slice(0, 32)}`;
+    const auditDir = path.resolve(process.cwd(), process.env.LOCAL_MEMORY_DIR ?? '../frontend/data/memory');
+    await mkdir(auditDir, { recursive: true });
+    await writeFile(path.join(auditDir, `${id}.json`), blob);
+    console.warn(`MemWal unavailable, wrote local reasoning snapshot ${id}: ${String(error)}`);
+    return id;
+  }
 }
 
 /**
@@ -158,7 +170,11 @@ export async function recordOutcome(params: {
     last_decision: `${params.direction} @ ${params.strike}`,
   };
 
-  await getMemWal().rememberAndWait(JSON.stringify(updated), 'predictai');
+  try {
+    await getMemWal().rememberAndWait(JSON.stringify(updated), 'predictai');
+  } catch (error) {
+    console.warn(`MemWal unavailable, outcome not persisted remotely: ${String(error)}`);
+  }
 }
 
 function calculateWinRate(
