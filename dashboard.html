@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PredictAI — Agent Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --paper:#FAF8F3;--paper2:#F2EFE6;--card:#FFFFFF;
+  --ink:#16261F;--ink2:#52645A;--ink3:#92A096;
+  --line:#E2DDCB;--line2:#D2CBAF;
+  --moss:#2F5D44;--moss-d:#1E4530;--moss-l:#E7F0E9;
+  --clay:#B4592E;--clay-l:#FBEBE0;
+  --gold:#A6802E;--gold-l:#F6EFD9;
+  --red:#A6402E;--red-l:#FBEAE4;
+  --shadow:0 1px 2px rgba(22,38,31,.04),0 6px 20px rgba(22,38,31,.05);
+  --shadow2:0 4px 10px rgba(22,38,31,.06),0 14px 40px rgba(22,38,31,.08);
+  --display:'Fraunces',serif;--sans:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  --r1:14px;--r2:10px;
+}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55;overflow-x:hidden}
+*{box-sizing:border-box}
+
+.layout{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--card);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow-y:auto}
+.sb-head{padding:18px 19px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}
+.sb-mark{width:27px;height:27px;border-radius:7px;background:var(--moss);color:#fff;font-family:var(--display);font-weight:600;font-style:italic;font-size:13px;display:flex;align-items:center;justify-content:center}
+.sb-word{font-family:var(--display);font-weight:600;font-size:15px;color:var(--ink)}
+.sb-nav{padding:14px 12px;flex:1}
+.sb-grp{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.08em;padding:13px 9px 5px}
+.sb-link{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;color:var(--ink2);text-decoration:none;font-size:12.5px;margin-bottom:1px;cursor:pointer;transition:.13s}
+.sb-link:hover{background:var(--paper2);color:var(--ink)}
+.sb-link.on{background:var(--moss-l);color:var(--moss-d);font-weight:500}
+.sb-link svg{width:14px;height:14px;flex-shrink:0;opacity:.75}
+.sb-badge{margin-left:auto;font-family:var(--mono);font-size:9.5px;padding:1px 6px;border-radius:99px;background:var(--paper2);color:var(--ink3)}
+.sb-badge.gold{background:var(--gold-l);color:var(--gold)}
+.sb-foot{padding:14px 16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.wallet-btn{padding:9px 13px;border-radius:9px;background:var(--ink);color:var(--paper);font-size:12px;font-weight:500;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+.wallet-info{display:flex;align-items:center;gap:8px}
+.wallet-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--moss),var(--gold));flex-shrink:0}
+.wallet-addr{font-family:var(--mono);font-size:10.5px;color:var(--ink3)}
+
+/* ── MAIN ── */
+.main{padding:0;overflow-y:auto;min-width:0}
+.topbar{padding:16px 26px;background:var(--card);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:5}
+.tb-title{font-family:var(--display);font-weight:600;font-size:18px;color:var(--ink);letter-spacing:-.2px}
+.tb-sub{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:2px}
+.tb-sub .live{color:var(--moss-d)}
+.tb-btns{display:flex;gap:8px}
+.btn-sm{padding:7px 13px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--line2);background:var(--card);color:var(--ink2);display:flex;align-items:center;gap:6px;transition:.13s;text-decoration:none}
+.btn-sm:hover{border-color:var(--ink3);color:var(--ink)}
+.btn-sm.dark{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn-sm.dark:hover{background:var(--moss);border-color:var(--moss)}
+.btn-sm.danger{background:var(--red-l);color:var(--red);border-color:#f0d2c7}
+.btn-sm.danger:hover{background:var(--red);color:#fff}
+
+.content{padding:22px 26px}
+
+.status-banner{padding:11px 14px;border-radius:9px;margin-bottom:14px;font-family:var(--mono);font-size:12px;border:1px solid}
+.status-error{background:var(--red-l);color:#8a3322;border-color:#f0d2c7}
+.status-info{background:var(--gold-l);color:#6b521f;border-color:#e3d3a3}
+
+/* metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.metric{background:var(--card);border:1px solid var(--line);border-radius:var(--r1);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.metric::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r1) var(--r1) 0 0}
+.m-moss::before{background:linear-gradient(90deg,var(--moss),#4d8367)}
+.m-gold::before{background:linear-gradient(90deg,var(--gold),#c9a45c)}
+.m-clay::before{background:linear-gradient(90deg,var(--clay),#d97e4f)}
+.m-lbl{font-family:var(--mono);font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+.m-val{font-family:var(--mono);font-weight:500;font-size:23px;color:var(--ink);letter-spacing:-.4px}
+.m-change{font-family:var(--mono);font-size:10.5px;margin-top:5px;display:flex;align-items:center;gap:4px}
+.m-up{color:var(--moss-d)}.m-down{color:var(--red)}.m-neutral{color:var(--ink3)}
+
+/* memory banner — signature element */
+.memory-banner{background:var(--gold-l);border:1px solid #e3d3a3;border-radius:var(--r1);padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start}
+.memory-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+.memory-banner-title{font-family:var(--mono);font-size:10px;color:#8a6c28;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.memory-banner-text{font-size:13px;color:#5c4719;line-height:1.55}
+.memory-banner-text b{color:#3e3008}
+
+/* grid layout */
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,320px);gap:14px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r1);box-shadow:var(--shadow);overflow:hidden}
+.card-head{padding:13px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;background:var(--paper2)}
+.card-title{font-family:var(--mono);font-size:11px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em}
+.card-badge{font-family:var(--mono);font-size:9.5px;padding:3px 9px;border-radius:99px}
+.badge-live{background:var(--moss-l);color:var(--moss-d);border:1px solid #cfe2d6}
+.badge-gold{background:var(--gold-l);color:var(--gold);border:1px solid #e3d3a3}
+
+/* oracle body */
+.oracle-body{padding:18px}
+.oracle-top{display:flex;align-items:center;gap:22px;margin-bottom:16px;flex-wrap:wrap}
+.oracle-price{font-family:var(--display);font-weight:600;font-size:30px;color:var(--ink)}
+.oracle-sub-lbl{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-transform:uppercase;margin-bottom:3px}
+.oracle-divider{width:1px;height:36px;background:var(--line)}
+.oracle-iv-val{font-family:var(--mono);font-weight:500;font-size:21px;color:var(--gold)}
+
+.vol-large{height:165px;border-radius:9px;background:var(--paper2);border:1px solid var(--line);overflow:hidden;margin-bottom:14px}
+
+.table-scroll{overflow-x:auto}
+table.strikes{width:100%;min-width:520px;font-family:var(--mono);font-size:11.5px;border-collapse:collapse}
+table.strikes th{text-align:left;font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--paper2)}
+table.strikes td{padding:9px 12px;border-bottom:1px solid var(--line);color:var(--ink)}
+table.strikes tr:last-child td{border-bottom:none}
+table.strikes tr.atm td{background:var(--gold-l)}
+.dir-pill{font-size:9.5px;padding:2px 8px;border-radius:99px;font-family:var(--mono)}
+.pill-up{background:var(--moss-l);color:var(--moss-d)}
+.pill-dn{background:var(--red-l);color:var(--red)}
+.pill-atm{background:var(--gold-l);color:var(--gold)}
+
+/* budget card */
+.budget-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r1);padding:17px;box-shadow:var(--shadow);margin-bottom:13px}
+.bc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}
+.bc-title{font-family:var(--mono);font-size:11px;color:var(--ink2);text-transform:uppercase}
+.bc-vals{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
+.bc-used{font-family:var(--mono);font-weight:600;font-size:23px;color:var(--ink)}
+.bc-cap{font-family:var(--mono);font-size:13px;color:var(--ink3)}
+.bc-bar{height:6px;background:var(--line);border-radius:4px;overflow:hidden;margin-bottom:8px}
+.bc-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--moss),var(--gold));transition:width .8s ease}
+.bc-rem{font-family:var(--mono);font-size:11.5px;color:var(--ink3)}
+.bc-rem b{color:var(--moss-d)}
+
+/* positions */
+.pos-body{padding:15px}
+.pos-card{background:var(--paper2);border:1px solid var(--line);border-radius:var(--r2);padding:13px;margin-bottom:8px;position:relative;overflow:hidden}
+.pos-card:last-child{margin-bottom:0}
+.pos-accent{position:absolute;left:0;top:0;bottom:0;width:3px}
+.acc-up{background:var(--moss)}.acc-dn{background:var(--red)}
+.pos-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.pos-name{font-family:var(--mono);font-size:12.5px;font-weight:500;color:var(--ink)}
+.pos-details{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.pd-lbl{font-family:var(--mono);font-size:9px;color:var(--ink3);text-transform:uppercase}
+.pd-val{font-family:var(--mono);font-size:11.5px;color:var(--ink);margin-top:1px}
+
+/* audit + reasoning grid */
+.bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.audit-row{display:flex;gap:11px;align-items:flex-start;padding:12px 17px;border-bottom:1px solid var(--line);cursor:pointer;transition:.13s}
+.audit-row:hover{background:var(--paper2)}
+.audit-row:last-child{border-bottom:none}
+.audit-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;font-family:var(--mono)}
+.ai-mint{background:var(--moss-l);color:var(--moss-d)}
+.ai-redeem{background:var(--gold-l);color:var(--gold)}
+.ai-skip{background:var(--paper2);color:var(--ink3);border:1px solid var(--line)}
+.audit-text{flex:1;min-width:0}
+.audit-title{font-size:12.5px;font-weight:500;color:var(--ink)}
+.audit-desc{font-size:11.5px;color:var(--ink2);margin-top:1px;line-height:1.4}
+.audit-meta{display:flex;gap:9px;margin-top:5px;align-items:center}
+.audit-time{font-family:var(--mono);font-size:10px;color:var(--ink3)}
+.audit-cid{font-family:var(--mono);font-size:10px;color:var(--clay)}
+.audit-preview{margin:0 17px 14px;max-height:220px;overflow:auto;background:var(--ink);color:#cfd8d1;border-radius:8px;padding:13px;font-family:var(--mono);font-size:10.5px;white-space:pre-wrap}
+
+/* agent reasoning */
+.reason-body{padding:15px}
+.reason-step{background:var(--paper2);border:1px solid var(--line);border-radius:var(--r2);padding:13px 14px;margin-bottom:8px;position:relative;overflow:hidden}
+.reason-step:last-child{margin-bottom:0}
+.reason-step::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.rs-1::before{background:#5b7fa6}
+.rs-2::before{background:var(--gold)}
+.rs-3::before{background:var(--moss)}
+.rs-lbl{font-family:var(--mono);font-size:9.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.rs-text{font-size:12px;color:var(--ink2);line-height:1.55}
+.rs-text b{color:var(--ink);font-weight:500}
+.rs-src{font-family:var(--mono);font-size:9.5px;color:var(--ink3);margin-top:6px}
+
+/* expiry bar */
+.expiry-bar{background:var(--clay-l);border:1px solid #ecc7ab;border-radius:var(--r1);padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:16px}
+.exp-lbl{font-family:var(--mono);font-size:9.5px;color:var(--clay);text-transform:uppercase;opacity:.8}
+.exp-time{font-family:var(--display);font-weight:600;font-size:19px;color:var(--clay)}
+.exp-bar-wrap{flex:1;height:4px;background:#f0d2c7;border-radius:3px;overflow:hidden}
+.exp-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--moss),var(--clay))}
+.exp-strike{font-family:var(--mono);font-size:13px;color:var(--clay);font-weight:500}
+
+@media (max-width:1024px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{position:relative;height:auto}
+  .grid2,.bottom-grid{grid-template-columns:1fr}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sb-head">
+      <div class="sb-mark">P</div>
+      <span class="sb-word">PredictAI</span>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-grp">Overview</div>
+      <div class="sb-link on">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Terminal
+        <span class="sb-badge gold">live</span>
+      </div>
+      <div class="sb-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Vol surface
+      </div>
+      <div class="sb-grp">Positions</div>
+      <div class="sb-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10"/></svg>
+        Open positions
+        <span class="sb-badge">2</span>
+      </div>
+      <div class="sb-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/></svg>
+        Settled history
+      </div>
+      <div class="sb-grp">Agent</div>
+      <div class="sb-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Reasoning log
+      </div>
+      <div class="sb-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8"/></svg>
+        Walrus audit
+        <span class="sb-badge">12</span>
+      </div>
+      <div class="sb-grp">Control</div>
+      <div class="sb-link" style="color:var(--red)" onclick="handleKill()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        Emergency stop
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <button class="wallet-btn" id="connectBtn" onclick="toggleWallet()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        Connect wallet
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="tb-title">Agent terminal</div>
+        <div class="tb-sub">2 open positions · budget 172/500 dUSDC · oracle 23s ago · <span class="live">all systems normal</span></div>
+      </div>
+      <div class="tb-btns">
+        <a href="predictai-deepbook-landing.html" class="btn-sm">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          Landing
+        </a>
+        <button class="btn-sm" onclick="refresh()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M1 20v-6h6"/></svg>
+          Refresh
+        </button>
+        <button class="btn-sm danger" onclick="handleKill()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          Kill mandate
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <div class="memory-banner">
+        <span class="memory-icon">🪼</span>
+        <div>
+          <div class="memory-banner-title">Memory-influenced reasoning · Walrus / MemWal</div>
+          <div class="memory-banner-text">Similar past setup near this IV regime: <b>2 of 3 wins</b> → confidence <b>+5%</b>. Mandate remaining budget: <b>328 dUSDC</b>. Agent authorization checked on-chain before every cycle.</div>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric m-moss">
+          <div class="m-lbl">Predict API</div>
+          <div class="m-val" id="mPredict" style="color:var(--moss-d)">Online</div>
+          <div class="m-change m-up">testnet indexer reachable</div>
+        </div>
+        <div class="metric m-gold">
+          <div class="m-lbl">Mandate state</div>
+          <div class="m-val" style="color:var(--gold)">Active</div>
+          <div class="m-change m-neutral">owner + agent verified</div>
+        </div>
+        <div class="metric m-clay">
+          <div class="m-lbl">ATM implied vol</div>
+          <div class="m-val" id="mIV" style="color:var(--clay)">42.8%</div>
+          <div class="m-change m-down">elevated · agent active</div>
+        </div>
+        <div class="metric m-moss">
+          <div class="m-lbl">Walrus</div>
+          <div class="m-val" style="color:var(--moss-d)">Online</div>
+          <div class="m-change m-up">publisher + aggregator OK</div>
+        </div>
+      </div>
+
+      <div class="expiry-bar">
+        <div>
+          <div class="exp-lbl">Next expiry</div>
+          <div class="exp-time" id="expTime">00:47:23</div>
+        </div>
+        <div class="exp-bar-wrap"><div class="exp-bar-fill" id="expFill" style="width:82%"></div></div>
+        <div style="text-align:right">
+          <div class="exp-lbl">Strike</div>
+          <div class="exp-strike">$63,000</div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Live vol surface · OracleSVI</span>
+            <span class="card-badge badge-live">live</span>
+          </div>
+          <div class="oracle-body">
+            <div class="oracle-top">
+              <div>
+                <div class="oracle-sub-lbl">BTC / USD</div>
+                <div class="oracle-price" id="dPrice">$63,284</div>
+              </div>
+              <div class="oracle-divider"></div>
+              <div>
+                <div class="oracle-sub-lbl">ATM implied vol</div>
+                <div class="oracle-iv-val" id="dIV">42.8%</div>
+              </div>
+              <div class="oracle-divider"></div>
+              <div>
+                <div class="oracle-sub-lbl">Skew</div>
+                <div style="font-family:var(--mono);font-weight:500;font-size:19px;color:var(--ink2)">−5.0%</div>
+              </div>
+            </div>
+
+            <div class="vol-large">
+              <svg viewBox="0 0 600 165" style="width:100%;height:100%" preserveAspectRatio="none">
+                <defs><linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2F5D44" stop-opacity=".12"/><stop offset="100%" stop-color="#2F5D44" stop-opacity="0"/></linearGradient></defs>
+                <line x1="0" y1="40" x2="600" y2="40" stroke="#E2DDCB" stroke-width="0.6"/>
+                <line x1="0" y1="80" x2="600" y2="80" stroke="#E2DDCB" stroke-width="0.6"/>
+                <line x1="0" y1="120" x2="600" y2="120" stroke="#E2DDCB" stroke-width="0.6"/>
+                <path d="M0,148 Q80,124 160,98 Q230,78 300,72 Q360,68 430,82 Q500,100 600,135 L600,165 L0,165 Z" fill="url(#dg)"/>
+                <path d="M0,148 Q80,124 160,98 Q230,78 300,72 Q360,68 430,82 Q500,100 600,135" fill="none" stroke="#2F5D44" stroke-width="1.7" opacity=".85"/>
+                <line x1="300" y1="10" x2="300" y2="165" stroke="#A6802E" stroke-width="0.7" opacity=".3" stroke-dasharray="4,4"/>
+                <circle cx="300" cy="72" r="5" fill="#A6802E"/>
+                <text x="308" y="66" font-size="9.5" fill="#A6802E" font-family="JetBrains Mono">ATM 42.8%</text>
+                <circle cx="225" cy="84" r="6" fill="#2F5D44" opacity=".8"/>
+                <text x="148" y="79" font-size="8.5" fill="#1E4530" font-family="JetBrains Mono" opacity=".85">▲ open UP</text>
+                <text x="6" y="160" font-size="8.5" fill="#92A096" font-family="JetBrains Mono">59K</text>
+                <text x="140" y="160" font-size="8.5" fill="#92A096" font-family="JetBrains Mono">61K</text>
+                <text x="282" y="160" font-size="8.5" fill="#A6802E" font-family="JetBrains Mono">63K</text>
+                <text x="420" y="160" font-size="8.5" fill="#92A096" font-family="JetBrains Mono">65K</text>
+                <text x="555" y="160" font-size="8.5" fill="#92A096" font-family="JetBrains Mono">67K</text>
+              </svg>
+            </div>
+
+            <div class="table-scroll">
+              <table class="strikes">
+                <thead><tr><th>Strike</th><th>IV</th><th>Direction</th><th>Premium</th><th>Agent</th></tr></thead>
+                <tbody>
+                  <tr><td>$61,000</td><td>43.5%</td><td><span class="dir-pill pill-dn">BTC DOWN</span></td><td>0.182</td><td style="color:var(--ink3)">—</td></tr>
+                  <tr><td>$62,000</td><td>42.1%</td><td><span class="dir-pill pill-dn">BTC DOWN</span></td><td>0.209</td><td style="color:var(--ink3)">—</td></tr>
+                  <tr class="atm"><td style="color:var(--gold)">$63,000 ◆</td><td style="color:var(--gold)">42.8%</td><td><span class="dir-pill pill-atm">ATM</span></td><td style="color:var(--gold)">0.234</td><td style="color:var(--moss-d);font-weight:500">active</td></tr>
+                  <tr><td>$64,000</td><td>43.0%</td><td><span class="dir-pill pill-up">BTC UP</span></td><td>0.218</td><td style="color:var(--ink3)">—</td></tr>
+                  <tr><td>$65,000</td><td>44.3%</td><td><span class="dir-pill pill-up">BTC UP</span></td><td>0.246</td><td style="color:var(--ink3)">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="budget-card">
+            <div class="bc-head">
+              <span class="bc-title">Mandate budget</span>
+              <span class="card-badge badge-live">within limits</span>
+            </div>
+            <div class="bc-vals"><span class="bc-used">172</span><span class="bc-cap">/ 500 dUSDC</span></div>
+            <div class="bc-bar"><div class="bc-fill" id="bcFill" style="width:34.4%"></div></div>
+            <div class="bc-rem"><b>328 dUSDC remaining</b> · expires in 5d 14h</div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">Open positions</span>
+              <span class="card-badge badge-gold">2 active</span>
+            </div>
+            <div class="pos-body">
+              <div class="pos-card">
+                <div class="pos-accent acc-up"></div>
+                <div class="pos-head">
+                  <span class="pos-name">BTC UP</span>
+                  <span class="dir-pill pill-up">$63,000</span>
+                </div>
+                <div class="pos-details">
+                  <div><div class="pd-lbl">Size</div><div class="pd-val">50 dUSDC</div></div>
+                  <div><div class="pd-lbl">Entry</div><div class="pd-val">0.234</div></div>
+                  <div><div class="pd-lbl">Expiry</div><div class="pd-val">15:10</div></div>
+                </div>
+              </div>
+              <div class="pos-card">
+                <div class="pos-accent acc-dn"></div>
+                <div class="pos-head">
+                  <span class="pos-name">BTC DOWN</span>
+                  <span class="dir-pill pill-dn">$61,000</span>
+                </div>
+                <div class="pos-details">
+                  <div><div class="pd-lbl">Size</div><div class="pd-val">75 dUSDC</div></div>
+                  <div><div class="pd-lbl">Entry</div><div class="pd-val">0.182</div></div>
+                  <div><div class="pd-lbl">Expiry</div><div class="pd-val">16:40</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-grid">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Walrus audit trail</span>
+            <span class="card-badge badge-live" id="auditBadge">live · 3s ago</span>
+          </div>
+          <div>
+            <div class="audit-row" onclick="openAudit(this)">
+              <div class="audit-icon ai-mint">↑</div>
+              <div class="audit-text">
+                <div class="audit-title">predict::mint · BTC UP</div>
+                <div class="audit-desc">63K strike · 50 dUSDC · IV 42.8% · mandate verified</div>
+                <div class="audit-meta"><span class="audit-time">14:23:07</span><span class="audit-cid">bafkrei...7xz9</span></div>
+              </div>
+            </div>
+            <div class="audit-row" onclick="openAudit(this)">
+              <div class="audit-icon ai-skip">◯</div>
+              <div class="audit-text">
+                <div class="audit-title">Oracle read · memory recalled</div>
+                <div class="audit-desc">IV 42.8% · 2/3 comparable wins · confidence +5%</div>
+                <div class="audit-meta"><span class="audit-time">14:18:44</span><span class="audit-cid">bafkrei...m4a2</span></div>
+              </div>
+            </div>
+            <div class="audit-row" onclick="openAudit(this)">
+              <div class="audit-icon ai-redeem">↓</div>
+              <div class="audit-text">
+                <div class="audit-title">predict::redeem_permissionless</div>
+                <div class="audit-desc">97K strike settled in-the-money · payout claimed</div>
+                <div class="audit-meta"><span class="audit-time">13:00:01</span><span class="audit-cid">bafkrei...9k1c</span></div>
+              </div>
+            </div>
+          </div>
+          <pre class="audit-preview" id="auditPreview" style="display:none"></pre>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Memory-influenced reasoning</span>
+            <span class="card-badge badge-gold">MemWal</span>
+          </div>
+          <div class="reason-body">
+            <div class="reason-step rs-1">
+              <div class="rs-lbl">Step 1 · oracle read</div>
+              <div class="rs-text">Fetched live SVI. ATM IV at <b>42.8%</b>, 94th percentile for the past 7 days. Skew <b>−5.0%</b>, mild bearish lean.</div>
+              <div class="rs-src">predict-server.testnet.mystenlabs.com · 14:23:06</div>
+            </div>
+            <div class="reason-step rs-2">
+              <div class="rs-lbl">Step 2 · memory recall</div>
+              <div class="rs-text">Walrus/MemWal returned <b>3 comparable outcomes</b> near this IV regime — <b>2 wins</b>. Confidence adjusted <b>+5%</b> from base.</div>
+              <div class="rs-src">walrus blob bafkrei...mem9 · session memory loaded</div>
+            </div>
+            <div class="reason-step rs-3">
+              <div class="rs-lbl">Step 3 · decision</div>
+              <div class="rs-text">Confidence <b>72%</b> clears the 65% threshold. Mandate has <b>328 dUSDC</b> remaining. Calling <b>predict::mint</b>.</div>
+              <div class="rs-src">reasoning stored: bafkrei...7xz9 · immutable on walrus</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+let connected=false;
+function toggleWallet(){
+  connected=!connected;
+  const btn=document.getElementById('connectBtn');
+  btn.innerHTML = connected
+    ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg> 0x5d16...e759'
+    : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg> Connect wallet';
+}
+function handleKill(){
+  if(!connected){ alert('Connect the owner wallet before using the emergency stop.'); return; }
+  if(confirm('Kill the mandate? This calls kill_mandate on-chain and stops all autonomous actions.')){
+    alert('kill_mandate transaction signed. Mandate is_active set to false.');
+  }
+}
+function refresh(){
+  const b=document.getElementById('auditBadge');
+  b.textContent='live · just now';
+  setTimeout(()=>{b.textContent='live · 3s ago';},1800);
+}
+function openAudit(el){
+  const pre=document.getElementById('auditPreview');
+  const title=el.querySelector('.audit-title').textContent;
+  pre.style.display='block';
+  pre.textContent = JSON.stringify({
+    action: title,
+    timestamp: Date.now(),
+    oracle: { atm_iv: 0.428, skew: -0.05 },
+    memorySignal: { comparable_outcomes: 3, comparable_wins: 2, confidence_adjustment: 0.05 },
+    mandate: { is_active: true, budget_remaining: 328 }
+  }, null, 2);
+}
+let secs=47*60+23;
+setInterval(()=>{
+  if(secs>0)secs--;
+  const m=Math.floor(secs/60), s=secs%60;
+  document.getElementById('expTime').textContent='00:'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  document.getElementById('expFill').style.width=Math.max(5,(secs/3600)*100)+'%';
+},1000);
+let price=63284, iv=42.8;
+setInterval(()=>{
+  price+=(Math.random()-0.48)*90;
+  iv+=(Math.random()-0.5)*0.25; if(iv<36)iv=36; if(iv>52)iv=52;
+  document.getElementById('dPrice').textContent='$'+Math.round(price).toLocaleString();
+  document.getElementById('dIV').textContent=iv.toFixed(1)+'%';
+  document.getElementById('mIV').textContent=iv.toFixed(1)+'%';
+},2400);
+window.addEventListener('load',()=>{
+  const f=document.getElementById('bcFill');
+  f.style.width='0'; setTimeout(()=>{f.style.transition='width 1s ease';f.style.width='34.4%';},250);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PredictAI — DeepBook Predict Hedging Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --paper:#FAF8F3;
+  --paper2:#F2EFE6;
+  --card:#FFFFFF;
+  --ink:#16261F;
+  --ink2:#52645A;
+  --ink3:#92A096;
+  --line:#E2DDCB;
+  --line2:#D2CBA f;
+  --moss:#2F5D44;
+  --moss-d:#1E4530;
+  --moss-l:#E7F0E9;
+  --clay:#B4592E;
+  --clay-l:#FBEBE0;
+  --gold:#A6802E;
+  --gold-l:#F6EFD9;
+  --red:#A6402E;
+  --red-l:#FBEAE4;
+  --shadow:0 1px 2px rgba(22,38,31,.04),0 6px 20px rgba(22,38,31,.05);
+  --shadow2:0 4px 10px rgba(22,38,31,.06),0 14px 40px rgba(22,38,31,.08);
+  --display:'Fraunces',serif;
+  --sans:'Inter',system-ui,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --r1:14px;--r2:10px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;overflow-x:hidden}
+
+/* paper grain */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:900;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:space-between;padding:14px 36px;background:rgba(250,248,243,.85);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;text-decoration:none}
+.brand-mark{width:28px;height:28px;border-radius:7px;background:var(--moss);color:#fff;font-family:var(--display);font-weight:600;font-style:italic;font-size:14px;display:flex;align-items:center;justify-content:center}
+.brand-word{font-family:var(--display);font-weight:600;font-size:16px;color:var(--ink);letter-spacing:-.2px}
+.nav-pills{display:flex;align-items:center;gap:8px}
+.pill{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;padding:5px 11px;border-radius:99px;border:1px solid var(--line);color:var(--ink2);background:var(--card)}
+.pill .dot{width:5px;height:5px;border-radius:50%;background:var(--moss);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.nav-links{display:flex;gap:22px;align-items:center}
+.nav-links a{font-size:13px;color:var(--ink2);text-decoration:none}
+.nav-links a:hover{color:var(--ink)}
+.btn-nav{padding:8px 16px;border-radius:8px;background:var(--ink);color:var(--paper);font-size:13px;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:.15s}
+.btn-nav:hover{background:var(--moss)}
+
+/* ── HERO ── */
+.hero{max-width:1240px;margin:0 auto;padding:118px 36px 60px;display:grid;grid-template-columns:1.1fr 1fr;gap:54px;align-items:center}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--moss-d);background:var(--moss-l);border:1px solid #cfe2d6;padding:5px 12px;border-radius:99px;margin-bottom:22px}
+h1.title{font-family:var(--display);font-weight:600;font-size:clamp(38px,4.6vw,60px);line-height:1.04;letter-spacing:-1px;color:var(--ink);margin-bottom:18px}
+h1.title em{font-style:italic;color:var(--moss)}
+p.lede{font-size:16.5px;color:var(--ink2);max-width:460px;line-height:1.7;margin-bottom:30px}
+.cta-row{display:flex;gap:10px;margin-bottom:36px}
+.btn-primary{padding:13px 22px;border-radius:10px;background:var(--moss);color:#fff;font-weight:500;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;box-shadow:var(--shadow);transition:.15s}
+.btn-primary:hover{background:var(--moss-d);transform:translateY(-1px)}
+.btn-outline{padding:13px 22px;border-radius:10px;background:transparent;border:1px solid var(--line2);color:var(--ink2);font-weight:500;font-size:14px;text-decoration:none}
+.btn-outline:hover{border-color:var(--ink3);color:var(--ink)}
+
+.stat-strip{display:flex;gap:28px}
+.stat-strip div{display:flex;flex-direction:column;gap:2px}
+.stat-num{font-family:var(--mono);font-size:21px;font-weight:500;color:var(--ink)}
+.stat-lbl{font-size:11px;color:var(--ink3)}
+
+/* Hero card */
+.hero-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r1);box-shadow:var(--shadow2);overflow:hidden;position:relative}
+.hc-top{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;background:var(--paper2)}
+.hc-label{font-family:var(--mono);font-size:10.5px;color:var(--ink2);text-transform:uppercase;letter-spacing:.05em}
+.hc-status{font-family:var(--mono);font-size:10px;background:var(--moss-l);color:var(--moss-d);padding:3px 9px;border-radius:99px;display:flex;align-items:center;gap:5px}
+.hc-body{padding:20px}
+.hc-price-row{display:flex;align-items:baseline;gap:8px;margin-bottom:14px}
+.hc-price{font-family:var(--display);font-weight:600;font-size:32px;color:var(--ink)}
+.hc-change{font-family:var(--mono);font-size:12px;background:var(--moss-l);color:var(--moss-d);padding:3px 8px;border-radius:7px}
+
+/* Walrus memory ticker — MagicUI marquee style */
+.memory-line{display:flex;gap:8px;align-items:flex-start;background:var(--gold-l);border:1px solid #e9dba f;border-radius:9px;padding:11px 13px;margin-bottom:14px}
+.memory-line .ic{font-size:13px;flex-shrink:0;margin-top:1px}
+.memory-line p{font-size:11.5px;color:#6b521f;line-height:1.5;font-family:var(--mono)}
+
+.hc-grid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line)}
+.hc-cell{padding:11px 14px;border-right:1px solid var(--line)}
+.hc-cell:last-child{border-right:none}
+.hc-cell-lbl{font-size:9.5px;font-family:var(--mono);color:var(--ink3);text-transform:uppercase;margin-bottom:3px}
+.hc-cell-val{font-size:14.5px;font-family:var(--mono);font-weight:500;color:var(--ink)}
+
+/* ── MARQUEE (magicui-style) ── */
+.marquee-wrap{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--paper2);overflow:hidden;padding:11px 0}
+.marquee-track{display:flex;gap:36px;width:max-content;animation:mq 28s linear infinite}
+.marquee-track:hover{animation-play-state:paused}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.mq-item{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11.5px;white-space:nowrap;color:var(--ink2)}
+.mq-item b{color:var(--ink);font-weight:500}
+.mq-item .up{color:var(--moss-d)}
+.mq-sep{color:var(--line2)}
+
+/* ── BENTO (magicui bento-grid style) ── */
+.section{max-width:1240px;margin:0 auto;padding:84px 36px}
+.section-eyebrow{font-family:var(--mono);font-size:11px;color:var(--clay);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;display:flex;gap:8px;align-items:center}
+.section-eyebrow::before{content:'';width:22px;height:1px;background:var(--clay)}
+h2.section-title{font-family:var(--display);font-weight:600;font-size:clamp(30px,3.6vw,44px);line-height:1.08;letter-spacing:-.6px;color:var(--ink);margin-bottom:14px}
+h2.section-title em{font-style:italic;color:var(--moss)}
+p.section-sub{font-size:15px;color:var(--ink2);max-width:460px;line-height:1.7}
+
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-top:46px}
+.bcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r1);padding:26px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:.2s}
+.bcard:hover{box-shadow:var(--shadow2);transform:translateY(-2px)}
+.b1{grid-column:span 7}.b2{grid-column:span 5}.b3{grid-column:span 4}.b4{grid-column:span 4}.b5{grid-column:span 4}
+.bnum{font-family:var(--mono);font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.btitle{font-family:var(--display);font-weight:600;font-size:18px;color:var(--ink);margin-bottom:8px;letter-spacing:-.2px}
+.bbody{font-size:13px;color:var(--ink2);line-height:1.6}
+.code{font-size:11px;padding:1px 5px;background:var(--paper2);border-radius:4px;font-family:var(--mono);color:var(--clay)}
+
+/* Terminal-card inside bento (border-beam-ish accent) */
+.term{position:relative;background:var(--ink);border-radius:10px;padding:15px;margin-top:18px;font-family:var(--mono);font-size:11.5px;line-height:2;overflow:hidden}
+.term::before{content:'';position:absolute;inset:0;border-radius:10px;background:linear-gradient(120deg,transparent,rgba(166,128,46,.5),transparent);background-size:200% 100%;animation:beam 4s linear infinite;opacity:.4;mix-blend-mode:overlay}
+@keyframes beam{from{background-position:200% 0}to{background-position:-200% 0}}
+.term-row{color:#cfd8d1;position:relative;z-index:1}
+.term-row .k{color:#e8c97a}
+.term-row .v{color:#7ddba a}
+.term-row .c{color:#5c6a62}
+.term-cursor{display:inline-block;width:6px;height:11px;background:#e8c97a;animation:blink2 .9s steps(1) infinite;vertical-align:middle}
+@keyframes blink2{0%,50%{opacity:1}51%,100%{opacity:0}}
+
+/* Vol surface SVG card */
+.vsurf{height:128px;border-radius:9px;border:1px solid var(--line);background:var(--paper2);margin-top:16px;overflow:hidden;position:relative}
+
+/* Mandate / budget meter */
+.budget-meter{margin-top:16px}
+.bm-row{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--ink2);margin-bottom:6px}
+.bm-bar{height:6px;background:var(--line);border-radius:4px;overflow:hidden}
+.bm-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--moss),var(--gold))}
+
+/* Kill switch micro */
+.kill-chip{margin-top:16px;padding:9px 12px;border-radius:8px;background:var(--red-l);border:1px solid #f0d2c7;color:var(--red);font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:8px;cursor:pointer}
+
+/* Memory dots / orbit (signature element) */
+.orbit-wrap{position:relative;width:150px;height:150px;margin:18px auto 0}
+.orbit-core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:13px;background:var(--moss);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;z-index:3}
+.orbit-ring{position:absolute;top:50%;left:50%;border:1px dashed var(--line2);border-radius:50%;transform:translate(-50%,-50%)}
+.r1{width:96px;height:96px;animation:rot 9s linear infinite}
+.r2{width:144px;height:144px;animation:rotr 14s linear infinite}
+@keyframes rot{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes rotr{to{transform:translate(-50%,-50%) rotate(-360deg)}}
+.odot{position:absolute;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;top:-13px;left:50%;transform:translateX(-50%)}
+.od-a{background:var(--gold-l);border:1px solid #e3d3a3}
+.od-b{background:var(--clay-l);border:1px solid #ecc7ab;top:auto;bottom:-13px}
+.od-c{background:var(--moss-l);border:1px solid #c9ddcd}
+
+/* ── STEPS ── */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r1);overflow:hidden;margin-top:44px;box-shadow:var(--shadow)}
+.step{background:var(--card);padding:30px;position:relative}
+.step-n{font-family:var(--display);font-weight:600;font-size:38px;color:var(--line2);line-height:1;margin-bottom:18px}
+.step h3{font-family:var(--display);font-weight:600;font-size:17px;color:var(--ink);margin-bottom:8px;letter-spacing:-.2px}
+.step p{font-size:13px;color:var(--ink2);line-height:1.65}
+
+/* ── CTA ── */
+.cta-wrap{max-width:1240px;margin:0 auto 80px;padding:0 36px}
+.cta-card{background:var(--ink);border-radius:18px;padding:56px;position:relative;overflow:hidden;display:grid;grid-template-columns:1fr auto;gap:36px;align-items:center}
+.cta-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 15% 30%,rgba(166,128,46,.18),transparent 70%)}
+.cta-title{font-family:var(--display);font-weight:600;font-size:clamp(28px,3.4vw,40px);color:var(--paper);line-height:1.1;letter-spacing:-.5px;margin-bottom:10px;position:relative}
+.cta-title em{font-style:italic;color:#e8c97a}
+.cta-sub{color:#b7c2bb;font-size:14px;max-width:380px;line-height:1.7;position:relative}
+.cta-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;position:relative}
+.cta-tag{font-family:var(--mono);font-size:10px;color:#e8c97a;border:1px solid rgba(232,201,122,.3);padding:4px 11px;border-radius:99px}
+.btn-cta{padding:14px 26px;border-radius:10px;background:#e8c97a;color:var(--ink);font-weight:600;font-size:14px;text-decoration:none;display:inline-flex;align-items:center;gap:8px;position:relative;white-space:nowrap}
+
+footer{border-top:1px solid var(--line);padding:28px 36px;display:flex;justify-content:space-between;align-items:center;background:var(--paper2)}
+.foot-left{font-family:var(--mono);font-size:11px;color:var(--ink3)}
+.foot-links{display:flex;gap:22px}
+.foot-links a{font-size:12px;color:var(--ink3);text-decoration:none}
+.foot-links a:hover{color:var(--ink2)}
+
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;padding-top:96px}
+  .bento{grid-template-columns:1fr}
+  .b1,.b2,.b3,.b4,.b5{grid-column:span 1}
+  .steps{grid-template-columns:1fr}
+  .cta-card{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="brand">
+    <div class="brand-mark">P</div>
+    <span class="brand-word">PredictAI</span>
+  </a>
+  <div class="nav-pills">
+    <span class="pill"><span class="dot"></span>DeepBook Predict · live testnet</span>
+  </div>
+  <div class="nav-links">
+    <a href="#flow">Flow</a>
+    <a href="#tech">Architecture</a>
+    <a href="https://docs.wal.app" target="_blank">Walrus docs</a>
+  </div>
+  <a href="dashboard.html" class="btn-nav">
+    Open terminal
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  </a>
+</nav>
+
+<section class="hero">
+  <div>
+    <div class="eyebrow">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      DeepBook Predict track · Sui Overflow 2026
+    </div>
+    <h1 class="title">DeepBook predicts.<br>PredictAI <em>hedges.</em><br>Walrus remembers.</h1>
+    <p class="lede">An autonomous agent that reads live DeepBook Predict volatility markets, recalls similar past outcomes from Walrus Memory, and opens mandate-capped hedges on Sui testnet — with every decision left as a verifiable trail.</p>
+    <div class="cta-row">
+      <a href="dashboard.html" class="btn-primary">
+        Open agent terminal
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <a href="#flow" class="btn-outline">See the execution flow</a>
+    </div>
+    <div class="stat-strip">
+      <div><span class="stat-num">73.2%</span><span class="stat-lbl">win rate · 30d</span></div>
+      <div><span class="stat-num">0</span><span class="stat-lbl">budget violations</span></div>
+      <div><span class="stat-num">2/3</span><span class="stat-lbl">comparable wins recalled</span></div>
+    </div>
+  </div>
+
+  <div class="hero-card">
+    <div class="hc-top">
+      <span class="hc-label">Live oracle · BTC/USD</span>
+      <span class="hc-status"><span class="dot" style="width:5px;height:5px;border-radius:50%;background:var(--moss)"></span>mandate active</span>
+    </div>
+    <div class="hc-body">
+      <div class="hc-price-row">
+        <span class="hc-price" id="heroPrice">$63,284</span>
+        <span class="hc-change" id="heroChange">+2.1%</span>
+      </div>
+
+      <div class="memory-line">
+        <span class="ic">🪼</span>
+        <p>Memory signal: similar past setup near this IV regime resolved <b style="color:#6b521f">2 of 3 wins</b> → confidence adjustment <b style="color:#6b521f">+5%</b>, recalled from Walrus/MemWal before this cycle's decision.</p>
+      </div>
+
+      <div class="vsurf" id="heroVsurf">
+        <svg viewBox="0 0 420 100" preserveAspectRatio="none" style="width:100%;height:100%">
+          <defs><linearGradient id="hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2F5D44" stop-opacity=".14"/><stop offset="100%" stop-color="#2F5D44" stop-opacity="0"/></linearGradient></defs>
+          <path d="M0,80 Q55,66 110,50 Q155,38 210,34 Q270,31 315,42 Q365,55 420,76 L420,100 L0,100 Z" fill="url(#hg)"/>
+          <path d="M0,80 Q55,66 110,50 Q155,38 210,34 Q270,31 315,42 Q365,55 420,76" fill="none" stroke="#2F5D44" stroke-width="1.6" opacity=".8"/>
+          <circle cx="210" cy="34" r="4" fill="#A6802E"/>
+          <text x="218" y="30" font-size="9" fill="#A6802E" font-family="JetBrains Mono">ATM 42.8%</text>
+        </svg>
+      </div>
+    </div>
+    <div class="hc-grid">
+      <div class="hc-cell"><div class="hc-cell-lbl">ATM IV</div><div class="hc-cell-val" id="heroIV" style="color:var(--gold)">42.8%</div></div>
+      <div class="hc-cell"><div class="hc-cell-lbl">Budget left</div><div class="hc-cell-val">328 dUSDC</div></div>
+      <div class="hc-cell"><div class="hc-cell-lbl">Confidence</div><div class="hc-cell-val" style="color:var(--moss-d)">72%</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="marquee-wrap">
+  <div class="marquee-track">
+    <span class="mq-item"><b>predict::mint</b> BTC UP @ 63K <span class="mq-sep">·</span> mandate check passed <span class="mq-sep">·</span> <span class="up">50 dUSDC</span></span>
+    <span class="mq-item"><b>Walrus blob</b> stored <span class="mq-sep">·</span> bafkrei...7xz9 <span class="mq-sep">·</span> <span class="up">verified</span></span>
+    <span class="mq-item"><b>Memory recall</b> 2/3 comparable wins <span class="mq-sep">·</span> confidence <span class="up">+5%</span></span>
+    <span class="mq-item"><b>predict::redeem_permissionless</b> settled <span class="mq-sep">·</span> <span class="up">+18.40 dUSDC</span></span>
+    <span class="mq-item"><b>Mandate state</b> active <span class="mq-sep">·</span> agent authorized <span class="mq-sep">·</span> budget within cap</span>
+    <span class="mq-item"><b>kill_mandate</b> guarded by matching KillCap <span class="mq-sep">·</span> E_WRONG_CAP enforced</span>
+    <span class="mq-item"><b>predict::mint</b> BTC UP @ 63K <span class="mq-sep">·</span> mandate check passed <span class="mq-sep">·</span> <span class="up">50 dUSDC</span></span>
+    <span class="mq-item"><b>Walrus blob</b> stored <span class="mq-sep">·</span> bafkrei...7xz9 <span class="mq-sep">·</span> <span class="up">verified</span></span>
+    <span class="mq-item"><b>Memory recall</b> 2/3 comparable wins <span class="mq-sep">·</span> confidence <span class="up">+5%</span></span>
+    <span class="mq-item"><b>predict::redeem_permissionless</b> settled <span class="mq-sep">·</span> <span class="up">+18.40 dUSDC</span></span>
+    <span class="mq-item"><b>Mandate state</b> active <span class="mq-sep">·</span> agent authorized <span class="mq-sep">·</span> budget within cap</span>
+    <span class="mq-item"><b>kill_mandate</b> guarded by matching KillCap <span class="mq-sep">·</span> E_WRONG_CAP enforced</span>
+  </div>
+</div>
+
+<section class="section" id="tech">
+  <div class="section-eyebrow">Core architecture</div>
+  <h2 class="section-title">Predict is the engine.<br><em>Walrus is the memory.</em></h2>
+  <p class="section-sub">Three primitives, one constrained loop: a Move-enforced budget, a real options market, and a verifiable record of why the agent acted.</p>
+
+  <div class="bento">
+    <div class="bcard b1">
+      <div class="bnum">01 · the brain</div>
+      <div class="btitle">Memory shapes every decision</div>
+      <p class="bbody">Before reasoning, the agent recalls comparable past outcomes from Walrus/MemWal — same IV regime, same skew direction — and exposes a plain-language signal that adjusts its confidence.</p>
+      <div class="term">
+        <div class="term-row"><span class="c">// memory signal · cycle 14:23:06</span></div>
+        <div class="term-row"><span class="k">comparable_outcomes</span> = <span class="v">3</span></div>
+        <div class="term-row"><span class="k">comparable_wins</span> = <span class="v">2</span></div>
+        <div class="term-row"><span class="k">confidence_adjustment</span> = <span class="v">+5%</span></div>
+        <div class="term-row"><span class="k">summary</span> = <span class="v">"2/3 wins, confidence +5%"</span></div>
+        <div class="term-row"><span class="c">→ passed to Claude as decision context</span><span class="term-cursor"></span></div>
+      </div>
+    </div>
+
+    <div class="bcard b2" style="display:flex;flex-direction:column;align-items:center;text-align:center">
+      <div class="bnum">02 · the loop</div>
+      <div class="btitle">One agent, three primitives</div>
+      <p class="bbody">DeepBook Predict, the Move mandate, and Walrus Memory — each one gates the next before any dUSDC moves.</p>
+      <div class="orbit-wrap">
+        <div class="orbit-core">⚙</div>
+        <div class="orbit-ring r1"><div class="odot od-a">📈</div></div>
+        <div class="orbit-ring r2"><div class="odot od-b">🪼</div><div class="odot od-c">🔒</div></div>
+      </div>
+    </div>
+
+    <div class="bcard b3">
+      <div class="bnum">03 · the gate</div>
+      <div class="btitle">Move-enforced budget</div>
+      <p class="bbody">Every spend calls <span class="code">check_and_record_spend</span> on-chain before <span class="code">predict::mint</span> fires — never a local counter.</p>
+      <div class="budget-meter">
+        <div class="bm-row"><span>172 used</span><span>500 dUSDC cap</span></div>
+        <div class="bm-bar"><div class="bm-fill" style="width:34.4%"></div></div>
+      </div>
+    </div>
+
+    <div class="bcard b4">
+      <div class="bnum">04 · the record</div>
+      <div class="btitle">Inspectable Walrus audit blobs</div>
+      <p class="bbody">Each cycle's oracle snapshot, memory signal, and decision is written to Walrus and indexed for the dashboard to display, click, and verify.</p>
+      <div style="margin-top:14px;padding:10px 12px;background:var(--paper2);border-radius:8px;border:1px solid var(--line);font-family:var(--mono);font-size:10.5px">
+        <div style="color:var(--ink3)">latest blob</div>
+        <div style="color:var(--clay);word-break:break-all;margin-top:3px">bafkrei...7xz9</div>
+      </div>
+    </div>
+
+    <div class="bcard b5">
+      <div class="bnum">05 · the stop</div>
+      <div class="btitle">Owner-only kill switch</div>
+      <p class="bbody"><span class="code">kill_mandate</span> now asserts the <span class="code">KillCap</span> matches this exact mandate — a mismatched cap aborts with <span class="code">E_WRONG_CAP</span>.</p>
+      <div class="kill-chip">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+        Emergency stop · wallet-signed
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="flow" style="padding-top:30px">
+  <div class="section-eyebrow">Judge demo flow</div>
+  <h2 class="section-title">From oracle event<br>to <em>verifiable action</em></h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">01</div>
+      <h3>Read the market</h3>
+      <p>Fetch the active DeepBook Predict oracle, current strike premiums, and the PredictManager's open positions.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">02</div>
+      <h3>Recall and reason</h3>
+      <p>MemWal returns comparable past outcomes; Claude weighs that signal alongside the live IV and skew before deciding.</p>
+    </div>
+    <div class="step">
+      <div class="step-n">03</div>
+      <h3>Gate, then execute</h3>
+      <p>The mandate checks budget, expiry, and authorization on-chain — only then does the agent mint, redeem, or safely hold.</p>
+    </div>
+  </div>
+</section>
+
+<div class="cta-wrap">
+  <div class="cta-card">
+    <div>
+      <h2 class="cta-title">The first autonomous<br>hedging agent on <em>Sui.</em></h2>
+      <p class="cta-sub">DeepBook supplies the market. The mandate enforces the limit. Walrus makes the reasoning permanent.</p>
+      <div class="cta-tags">
+        <span class="cta-tag">DEEPBOOK PREDICT</span>
+        <span class="cta-tag">WALRUS MEMORY</span>
+        <span class="cta-tag">SUI TESTNET</span>
+      </div>
+    </div>
+    <a href="dashboard.html" class="btn-cta">
+      Open terminal
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+</div>
+
+<footer>
+  <div class="foot-left">PREDICTAI · DEEPBOOK PREDICT TRACK · SUI OVERFLOW 2026</div>
+  <div class="foot-links">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="https://docs.wal.app" target="_blank">Walrus</a>
+    <a href="https://sui.io" target="_blank">Sui</a>
+  </div>
+</footer>
+
+<script>
+let p=63284, iv=42.8;
+setInterval(()=>{
+  p+=(Math.random()-0.48)*90;
+  iv+=(Math.random()-0.5)*0.25; if(iv<36)iv=36; if(iv>52)iv=52;
+  const chg=((p-63284)/63284*100).toFixed(2);
+  const pe=document.getElementById('heroPrice'); if(pe)pe.textContent='$'+Math.round(p).toLocaleString();
+  const ce=document.getElementById('heroChange'); if(ce){ce.textContent=(chg>=0?'+':'')+chg+'%'; ce.style.color=chg>=0?'#1E4530':'#A6402E'; ce.style.background=chg>=0?'#E7F0E9':'#FBEAE4';}
+  const ie=document.getElementById('heroIV'); if(ie)ie.textContent=iv.toFixed(1)+'%';
+},2200);
+</script>
+</body>
+</html>
