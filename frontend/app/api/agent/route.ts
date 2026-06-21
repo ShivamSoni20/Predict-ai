@@ -1,43 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-// We are mocking the data fetching for the frontend demo based on the dev plan
+import {
+  fetchOracleSVI,
+  fetchStrikeList,
+  fetchOpenPositions,
+  checkPredictServerHealth,
+} from '@/lib/predict';
 
 export async function GET(req: NextRequest) {
   try {
-    // Mock oracle response
-    const oracle = {
-      atm_iv: 0.428,
-      skew: -0.032,
-      slope: 0.015,
-      timestamp: Date.now() - 47000,
-      expiry_ms: Date.now() + 3600 * 1000,
-      strike_atm: 103284,
-    };
-    
-    // Mock strikes response
-    const strikes = [
-      { strike: 90000, iv: 0.48, premium_up: 0.85, premium_down: 0.15 },
-      { strike: 100000, iv: 0.43, premium_up: 0.45, premium_down: 0.55 },
-      { strike: 103000, iv: 0.428, premium_up: 0.234, premium_down: 0.766 },
-    ];
+    const serverUp = await checkPredictServerHealth();
+    if (!serverUp) {
+      return NextResponse.json(
+        { error: 'Predict server unreachable', serverUp: false },
+        { status: 503 }
+      );
+    }
 
-    // Mock positions response
-    const positions = [
-      { position_id: 'pos1', direction: 'UP', strike: 103000, size_dusdc: 50, entry_premium: 0.234, expiry_ms: Date.now() + 3600 * 1000, status: 'OPEN', pnl: 0 },
-      { position_id: 'pos2', direction: 'DOWN', strike: 105000, size_dusdc: 50, entry_premium: 0.3, expiry_ms: Date.now() - 3600 * 1000, status: 'SETTLED', pnl: 18.40 }
-    ];
+    const [oracle, strikes] = await Promise.all([
+      fetchOracleSVI(),
+      fetchStrikeList(),
+    ]);
 
-    return NextResponse.json({ oracle, strikes, positions });
+    const managerAddress = process.env.PREDICT_MANAGER_ID;
+    const positions = managerAddress
+      ? await fetchOpenPositions(managerAddress)
+      : [];
+
+    return NextResponse.json({ oracle, strikes, positions, serverUp: true });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error('API /agent error:', error);
+    return NextResponse.json(
+      { error: String(error), serverUp: false },
+      { status: 500 }
+    );
   }
-}
-
-export async function POST(req: NextRequest) {
-  const { action } = await req.json();
-
-  if (action === 'kill') {
-    return NextResponse.json({ success: true, message: 'Kill signal sent' });
-  }
-
-  return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
 }

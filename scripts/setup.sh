@@ -2,7 +2,7 @@
 # scripts/setup.sh — PredictAI dev environment setup
 
 echo "=== Installing suiup (official Sui toolchain manager) ==="
-curl -sL https://sui.io/suiup/install | bash
+curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | sh
 
 echo "=== Switching to testnet ==="
 suiup default testnet

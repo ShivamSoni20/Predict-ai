@@ -1,10 +1,9 @@
+import 'dotenv/config';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { fetchOracleSVI, fetchStrikeList, fetchOpenPositions, buildMintTransaction, buildRedeemTransaction, checkPredictServerHealth } from './executor';
-import { makeDecision } from './decision';
-import { storeReasoning, recordOutcome, verifyMemWalSetup } from './memory';
-import { uploadAuditLog, checkWalrusHealth } from './logger';
-import * as dotenv from 'dotenv';
-dotenv.config();
+import { fetchOracleSVI, fetchStrikeList, fetchOpenPositions, buildMintTransaction, buildRedeemTransaction, checkPredictServerHealth } from './executor.js';
+import { makeDecision } from './decision.js';
+import { storeReasoning, recordOutcome, verifyMemWalSetup } from './memory.js';
+import { uploadAuditLog, checkWalrusHealth } from './logger.js';
 
 const keypair = Ed25519Keypair.fromSecretKey(
   process.env.SUI_PRIVATE_KEY!
@@ -30,7 +29,7 @@ async function runAgentCycle(): Promise<void> {
       console.log(`Redeeming settled position: ${pos.position_id}`);
       const digest = await buildRedeemTransaction({
         predictManagerId: MANAGER_ID,
-        positionId: pos.position_id,
+        position: pos,
         keypair,
       });
       await recordOutcome({
@@ -80,11 +79,19 @@ async function runAgentCycle(): Promise<void> {
     if (decision.action === 'OPEN_HEDGE' && decision.direction && decision.strike) {
       const dUsdcObject = await findDUsdcCoin(keypair);
 
+      const selectedStrikeInfo = strikes.find(s => s.strike === decision.strike);
+      const premium = decision.direction === 'UP' 
+        ? (selectedStrikeInfo?.premium_up ?? 0.5) 
+        : (selectedStrikeInfo?.premium_down ?? 0.5);
+
       const digest = await buildMintTransaction({
         mandateObjectId: MANDATE_ID,
         predictManagerId: MANAGER_ID,
+        oracleId: oracle.oracle_id!,
+        expiry: oracle.expiry_ms,
         direction: decision.direction,
         strike: decision.strike,
+        premium,
         sizeDusdc: decision.size_dusdc ?? 50,
         dUsdcCoinObjectId: dUsdcObject,
         keypair,

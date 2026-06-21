@@ -16,6 +16,7 @@ export interface OracleSVI {
   timestamp: number;       // unix ms
   expiry_ms: number;       // next expiry timestamp
   strike_atm: number;      // ATM strike price
+  oracle_id?: string;      // active oracle ID on-chain
 }
 
 export interface PredictPosition {
@@ -27,6 +28,8 @@ export interface PredictPosition {
   expiry_ms: number;
   status: 'OPEN' | 'SETTLED' | 'EXPIRED';
   pnl: number;
+  oracle_id?: string;
+  quantity?: number;
 }
 
 // ── Oracle Functions ──
@@ -45,12 +48,14 @@ export async function fetchOracleSVI(): Promise<OracleSVI> {
   const listRes = await fetch(`${PREDICT_SERVER}/predicts/${predictId}/oracles`);
   if (!listRes.ok) throw new Error('Failed to fetch oracle list');
   const oracles: any[] = await listRes.json();
-  const activeOracle = oracles.find(o => o.status === 'active');
+  const activeOracle = oracles.find(o => o.status === 'active') ?? oracles[0];
   if (!activeOracle) throw new Error('No active oracle found');
 
   const stateRes = await fetch(`${PREDICT_SERVER}/oracles/${activeOracle.oracle_id}/state`);
   if (!stateRes.ok) throw new Error('Failed to fetch oracle state');
   const data: any = await stateRes.json();
+
+  const spotAtm = data.latest_price ? Math.round(Number(data.latest_price.spot) / 1_000_000_000) : 63000;
 
   return {
     atm_iv: data.atm_iv || 0.428,
@@ -58,7 +63,8 @@ export async function fetchOracleSVI(): Promise<OracleSVI> {
     slope: data.slope || 0.1,
     timestamp: data.timestamp || Date.now(),
     expiry_ms: data.expiry_ms || activeOracle.expiry,
-    strike_atm: data.strike_atm || 103000,
+    strike_atm: data.strike_atm || spotAtm,
+    oracle_id: activeOracle.oracle_id,
   };
 }
 
@@ -71,32 +77,113 @@ export async function fetchStrikeList(): Promise<Array<{
   const predictId = process.env.PREDICT_OBJECT_ID!;
   const listRes = await fetch(`${PREDICT_SERVER}/predicts/${predictId}/oracles`);
   const oracles: any[] = await listRes.json();
-  const activeOracle = oracles.find(o => o.status === 'active');
+  const activeOracle = oracles.find(o => o.status === 'active') ?? oracles[0];
   
   if (activeOracle) {
     const stateRes = await fetch(`${PREDICT_SERVER}/oracles/${activeOracle.oracle_id}/state`);
     const data: any = await stateRes.json();
     if (data.strikes) return data.strikes;
+
+    if (data.latest_price) {
+      const spot = Number(data.latest_price.spot) / 1_000_000_000;
+      const spotAtm = Math.round(spot / 100) * 100;
+      return [
+        { strike: spotAtm - 200, iv: 0.450, premium_up: 0.70, premium_down: 0.30 },
+        { strike: spotAtm - 100, iv: 0.435, premium_up: 0.60, premium_down: 0.40 },
+        { strike: spotAtm,       iv: 0.428, premium_up: 0.45, premium_down: 0.55 },
+        { strike: spotAtm + 100, iv: 0.430, premium_up: 0.35, premium_down: 0.65 },
+        { strike: spotAtm + 200, iv: 0.440, premium_up: 0.25, premium_down: 0.75 }
+      ];
+    }
   }
   
-  // Fallback if not provided in state
   return [
-    { strike: 101000, iv: 0.450, premium_up: 0.70, premium_down: 0.30 },
-    { strike: 102000, iv: 0.435, premium_up: 0.60, premium_down: 0.40 },
-    { strike: 103000, iv: 0.428, premium_up: 0.45, premium_down: 0.55 },
-    { strike: 104000, iv: 0.430, premium_up: 0.35, premium_down: 0.65 },
-    { strike: 105000, iv: 0.440, premium_up: 0.25, premium_down: 0.75 }
+    { strike: 62800, iv: 0.450, premium_up: 0.70, premium_down: 0.30 },
+    { strike: 62900, iv: 0.435, premium_up: 0.60, premium_down: 0.40 },
+    { strike: 63000, iv: 0.428, premium_up: 0.45, premium_down: 0.55 },
+    { strike: 63100, iv: 0.430, premium_up: 0.35, premium_down: 0.65 },
+    { strike: 63200, iv: 0.440, premium_up: 0.25, premium_down: 0.75 }
   ];
 }
 
 export async function fetchOpenPositions(
   managerAddress: string
 ): Promise<PredictPosition[]> {
-  const response = await fetch(
-    `${PREDICT_SERVER}/api/positions/${managerAddress}`
-  );
-  const data: any = await response.json();
-  return data.positions;
+  try {
+    const res = await fetch(`${PREDICT_SERVER}/managers/${managerAddress}/positions`);
+    if (res.ok) {
+      const data = await res.json();
+      const minted: any[] = data.minted ?? [];
+      const redeemed: any[] = data.redeemed ?? [];
+
+      return minted.map((m: any) => {
+        const isRedeemed = redeemed.some(
+          (r: any) =>
+            r.oracle_id === m.oracle_id &&
+            r.strike === m.strike &&
+            r.is_up === m.is_up &&
+            r.quantity === m.quantity
+        );
+
+        const status = isRedeemed
+          ? 'EXPIRED'
+          : m.expiry < Date.now()
+          ? 'SETTLED'
+          : 'OPEN';
+
+        let pnl = 0;
+        if (isRedeemed) {
+          const matchingRedeem = redeemed.find(
+            (r: any) =>
+              r.oracle_id === m.oracle_id &&
+              r.strike === m.strike &&
+              r.is_up === m.is_up &&
+              r.quantity === m.quantity
+          );
+          pnl = ((matchingRedeem?.payout ?? 0) - m.cost) / 1_000_000;
+        }
+
+        return {
+          position_id: m.event_digest ?? m.digest ?? '',
+          direction: m.is_up ? 'UP' : 'DOWN',
+          strike: Number(m.strike) / 1_000_000_000,
+          size_dusdc: m.cost / 1_000_000,
+          entry_premium: m.ask_price / 1_000_000_000,
+          expiry_ms: m.expiry,
+          status,
+          pnl,
+          oracle_id: m.oracle_id,
+          quantity: m.quantity,
+        };
+      });
+    }
+  } catch (err) {
+    console.error('Indexer fetch failed, falling back to on-chain:', err);
+  }
+
+  try {
+    const objects = await client.getOwnedObjects({
+      owner: managerAddress,
+      filter: { StructType: `${PREDICT_PACKAGE}::predict::Position` },
+      options: { showContent: true },
+    });
+
+    return objects.data.map((obj: any) => {
+      const fields = obj.data?.content?.fields ?? {};
+      return {
+        position_id: obj.data?.objectId ?? '',
+        direction: fields.direction === 0 ? 'UP' : 'DOWN',
+        strike: Number(fields.strike ?? 0) / 1_000_000_000,
+        size_dusdc: Number(fields.size ?? 0) / 1_000_000,
+        entry_premium: Number(fields.entry_premium ?? 0) / 1_000_000_000,
+        expiry_ms: Number(fields.expiry_ms ?? 0),
+        status: fields.settled ? 'SETTLED' : 'OPEN',
+        pnl: Number(fields.pnl ?? 0) / 1_000_000,
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 
 // ── Transaction Functions ──
@@ -104,8 +191,11 @@ export async function fetchOpenPositions(
 export async function buildMintTransaction(params: {
   mandateObjectId: string;
   predictManagerId: string;
+  oracleId: string;
+  expiry: number;
   direction: 'UP' | 'DOWN';
   strike: number;
+  premium: number;
   sizeDusdc: number;
   dUsdcCoinObjectId: string;
   keypair: Ed25519Keypair;
@@ -118,8 +208,6 @@ export async function buildMintTransaction(params: {
     [params.sizeDusdc * 1_000_000]
   );
 
-  const directionArg = params.direction === 'UP' ? 0 : 1;
-
   tx.moveCall({
     target: `${process.env.NEXT_PUBLIC_PACKAGE_ID}::agent_mandate::check_and_record_spend`,
     arguments: [
@@ -130,12 +218,35 @@ export async function buildMintTransaction(params: {
   });
 
   tx.moveCall({
-    target: `${PREDICT_PACKAGE}::predict::mint`,
+    target: `${PREDICT_PACKAGE}::predict_manager::deposit`,
     arguments: [
       tx.object(params.predictManagerId),
       coin,
-      tx.pure.u64(params.strike),
-      tx.pure.u8(directionArg),
+    ],
+  });
+
+  const scaledStrike = params.strike * 1_000_000_000;
+  const marketKey = tx.moveCall({
+    target: `${PREDICT_PACKAGE}::market_key::new`,
+    arguments: [
+      tx.pure.address(params.oracleId),
+      tx.pure.u64(params.expiry),
+      tx.pure.u64(scaledStrike),
+      tx.pure.bool(params.direction === 'UP'),
+    ],
+  });
+
+  const quantity = Math.floor((params.sizeDusdc / params.premium) * 1_000_000);
+
+  tx.moveCall({
+    target: `${PREDICT_PACKAGE}::predict::mint`,
+    arguments: [
+      tx.object(process.env.PREDICT_OBJECT_ID!),
+      tx.object(params.predictManagerId),
+      tx.object(params.oracleId),
+      marketKey,
+      tx.pure.u64(quantity),
+      tx.object('0x6'),
     ],
   });
 
@@ -146,7 +257,7 @@ export async function buildMintTransaction(params: {
   });
 
   if (result.effects?.status?.status !== 'success') {
-    throw new Error(`Transaction failed: ${result.effects?.status?.error}`);
+    throw new Error(`Mint transaction failed: ${result.effects?.status?.error}`);
   }
 
   return result.digest;
@@ -154,16 +265,31 @@ export async function buildMintTransaction(params: {
 
 export async function buildRedeemTransaction(params: {
   predictManagerId: string;
-  positionId: string;
+  position: PredictPosition;
   keypair: Ed25519Keypair;
 }): Promise<string> {
   const tx = new Transaction();
 
+  const scaledStrike = params.position.strike * 1_000_000_000;
+  const marketKey = tx.moveCall({
+    target: `${PREDICT_PACKAGE}::market_key::new`,
+    arguments: [
+      tx.pure.address(params.position.oracle_id!),
+      tx.pure.u64(params.position.expiry_ms),
+      tx.pure.u64(scaledStrike),
+      tx.pure.bool(params.position.direction === 'UP'),
+    ],
+  });
+
   tx.moveCall({
     target: `${PREDICT_PACKAGE}::predict::redeem_permissionless`,
     arguments: [
+      tx.object(process.env.PREDICT_OBJECT_ID!),
       tx.object(params.predictManagerId),
-      tx.object(params.positionId),
+      tx.object(params.position.oracle_id!),
+      marketKey,
+      tx.pure.u64(params.position.quantity!),
+      tx.object('0x6'),
     ],
   });
 
@@ -172,6 +298,10 @@ export async function buildRedeemTransaction(params: {
     signer: params.keypair,
     options: { showEffects: true },
   });
+
+  if (result.effects?.status?.status !== 'success') {
+    throw new Error(`Redeem transaction failed: ${result.effects?.status?.error}`);
+  }
 
   return result.digest;
 }

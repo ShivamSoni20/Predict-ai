@@ -5,6 +5,7 @@
 
 # Build artifacts
 contracts/build/
+agent/dist/
 
 # Transaction JSON artifacts
 contracts/*.json
@@ -12,5 +13,17 @@ contracts/*.json
 !contracts/Move.lock
 !contracts/Published.toml
 
+# Dependencies
+node_modules/
+
+# Environment files (contain secrets)
+.env
+.env.local
+agent/.env
+agent/.env.local
+frontend/.env
+frontend/.env.local
+
 # OS
 .DS_Store
+Thumbs.db

@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { OracleSVI } from './executor';
-import { loadAgentMemory } from './memory';
+import { OracleSVI } from './executor.js';
+import { loadAgentMemory } from './memory.js';
 
 const claude = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -74,7 +74,7 @@ ${memory ? `
 - Win rate: ${(memory.win_rate * 100).toFixed(1)}%
 - Total positions: ${memory.total_positions}
 - Last decision: ${memory.last_decision}
-- Recent IV history: ${memory.iv_history.slice(-3).map(h => (h.iv * 100).toFixed(1) + '%').join(', ')}
+- Recent IV history: ${memory.iv_history.slice(-3).map((h: { iv: number; timestamp: number }) => (h.iv * 100).toFixed(1) + '%').join(', ')}
 ` : '- No historical memory yet (first session)'}
 
 CONSTRAINTS:

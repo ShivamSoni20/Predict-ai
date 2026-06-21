@@ -1,10 +1,19 @@
 import { MemWal } from '@mysten-incubation/memwal';
 
 // ── MemWal Client Setup ──
-const memwal = MemWal.create({
-  key: process.env.MEMWAL_DELEGATE_KEY!,
-  accountId: process.env.MEMWAL_AGENT_ADDRESS!,
-});
+let memwalInstance: any = null;
+function getMemWal() {
+  if (!memwalInstance) {
+    if (!process.env.MEMWAL_DELEGATE_KEY || !process.env.MEMWAL_AGENT_ADDRESS) {
+      throw new Error("MemWal credentials not set");
+    }
+    memwalInstance = MemWal.create({
+      key: process.env.MEMWAL_DELEGATE_KEY,
+      accountId: process.env.MEMWAL_AGENT_ADDRESS,
+    });
+  }
+  return memwalInstance;
+}
 
 export async function verifyMemWalSetup(): Promise<boolean> {
   try {
@@ -53,7 +62,7 @@ export async function storeReasoning(reasoning: {
     agent_version: '1.0.0',
   });
 
-  const result = await memwal.rememberAndWait(blob, 'predictai');
+  const result = await getMemWal().rememberAndWait(blob, 'predictai');
   return result.blob_id;
 }
 
@@ -65,7 +74,7 @@ export async function loadAgentMemory(
   context: string
 ): Promise<AgentMemory | null> {
   try {
-    const memories = await memwal.recall({
+    const memories = await getMemWal().recall({
       query: context,
       limit: 10,
       namespace: 'predictai',
@@ -104,7 +113,7 @@ export async function recordOutcome(params: {
     last_decision: `${params.direction} @ ${params.strike}`,
   };
 
-  await memwal.rememberAndWait(JSON.stringify(updated), 'outcome');
+  await getMemWal().rememberAndWait(JSON.stringify(updated), 'outcome');
 }
 
 function calculateWinRate(
